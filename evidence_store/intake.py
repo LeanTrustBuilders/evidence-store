@@ -229,7 +229,11 @@ def process_issue(issue: dict, ctx: Context, announce: bool = True) -> tuple[Out
             out.labels.append((n, ["evidence:needs-fix"], []))
         return out, None
     out.records.append(r)
-    out.replies.append((n, describe(r) + "\n\n" + FOOTER[r["verdict"]].format(name=r["subject"]["name"])))
+    footer = FOOTER[r["verdict"]].format(name=r["subject"]["name"])
+    if r["verdict"] == "accept" and r["by"]["kind"] == "agent":
+        footer = footer.replace("It counts from now on.", "It is recorded as an AI agent's review: each reader "
+                                "chooses whether those count.")
+    out.replies.append((n, describe(r) + "\n\n" + footer))
     if r["verdict"] == "accept":
         out.labels.append((n, [], ["evidence:needs-fix"]))
         out.close.append((n, "completed"))

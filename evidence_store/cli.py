@@ -35,7 +35,7 @@ name: Evidence intake
 
 on:
   issues:
-    types: [opened, edited, labeled]
+    types: [opened, edited]
   issue_comment:
     types: [created]
   schedule:

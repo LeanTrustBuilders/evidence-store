@@ -162,6 +162,7 @@ class IntakeTests(unittest.TestCase):
         out = process(issue(4, "review", {**answers, "rationale": "It is n + n."}), [], self.ctx)
         [r] = out.records
         self.assertEqual((r["by"]["kind"], r["by"]["agent"]["model"]), ("agent", "claude-opus-5-5"))
+        self.assertIn("each reader chooses whether those count", out.replies[0][1])
         self.assertEqual(r["by"]["identity"]["id"], "alice")
 
     def test_supersedes_and_disagreement(self):
