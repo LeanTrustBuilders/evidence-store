@@ -47,6 +47,14 @@ AGENT_MARK = re.compile(r"<!--\s*agent:(.*?)-->", re.S)
 COMMANDS = ("withdraw", "fixed", "intended", "invalid", "answered", "reopen")
 
 
+class DatasetMissing(LookupError):
+    """No dataset of the library at a commit: typically one not built yet. Intake tries again later."""
+
+    def __init__(self, commit: str):
+        super().__init__(commit)
+        self.commit = commit
+
+
 @dataclass
 class Context:
     #: The repository whose issues are read, ``owner/name``.
@@ -134,8 +142,8 @@ def review_record(kind: str, answers: dict, issue: dict, ctx: Context) -> tuple[
         return None, ["the declaration is missing"]
     try:
         ds = ctx.dataset(commit)
-    except Exception as e:  # no dataset for that commit
-        return None, [f"no dataset of the library at `{commit or 'latest'}`: {e}"]
+    except Exception as e:  # no dataset for that commit, or not yet
+        raise DatasetMissing(commit) from e
     decl = ds.by_name.get(name)
     if decl is None:
         close = difflib.get_close_matches(name, [d.name for d in ds.decls if d.is_project], n=3)
@@ -220,8 +228,16 @@ def process_issue(issue: dict, ctx: Context, announce: bool = True) -> tuple[Out
     if existing:
         return out, existing[0]
     answers = forms.parse(kind, issue.get("body", ""))
-    r, errs = review_record(kind, answers, issue, ctx)
     n = issue["number"]
+    try:
+        r, errs = review_record(kind, answers, issue, ctx)
+    except DatasetMissing as e:
+        # Not the author's mistake: the dataset of a new commit is built after it. The next run, or
+        # the next sweep, reads the issue again.
+        if announce:
+            out.replies.append((n, f"There is no dataset of the library at `{e.commit[:12] or 'its latest commit'}` "
+                                   "yet (one is built after each commit). This will be recorded as soon as it is."))
+        return out, None
     if r is None:
         if announce:
             out.replies.append((n, "Not recorded yet:\n\n" + "\n".join(f"- {e}" for e in errs) +

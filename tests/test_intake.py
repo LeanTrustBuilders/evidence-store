@@ -177,6 +177,16 @@ class IntakeTests(unittest.TestCase):
         self.assertEqual(ev.superseded_by, {first["id"]: second["id"]})
         self.assertTrue(ev.disagreement(F + "triple"))
 
+    def test_a_commit_without_a_dataset_yet(self):
+        def missing(commit):
+            raise LookupError("release not found")
+        ctx = Context(repo=REPO, store=self.store, dataset=missing)
+        out = process(issue(9, "review", {"decl": F + "double", "commit": "abcdef123456", "who": "person"}), [], ctx)
+        self.assertEqual((out.records, out.labels), ([], []))
+        self.assertIn("will be recorded as soon as it is", out.replies[0][1])
+        self.assertEqual(len(process(issue(9, "review", {"decl": F + "double", "commit": "abcdef123456", "who": "person"}),
+                                     [], self.ctx).records), 1)
+
     def test_unknown_declaration(self):
         out = process(issue(8, "review", {"decl": F + "doubel", "who": "person"}), [], self.ctx)
         self.assertEqual(out.records, [])
