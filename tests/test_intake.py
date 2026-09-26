@@ -37,6 +37,11 @@ def issue(number: int, kind: str, answers: dict, by: str = "alice", at: str = "2
             "labels": [{"name": forms.FORMS[kind]["label"]}], "author_association": association}
 
 
+def event(eid: int, what: str, by: str, at: str, reason: str | None = None) -> dict:
+    return {"id": eid, "event": what, "actor": user(by, "Bot" if by.endswith("[bot]") else "User"),
+            "created_at": at, "state_reason": reason}
+
+
 def comment(cid: int, body: str, by: str = "bob", at: str = "2026-09-26T11:00:00Z",
             association: str = "NONE", kind: str = "User") -> dict:
     return {"id": cid, "html_url": f"https://github.com/{REPO}/issues/1#issuecomment-{cid}",
@@ -133,7 +138,7 @@ class IntakeTests(unittest.TestCase):
                                 ("status", "invalid", "erin")])
         fixed = out.records[3]
         self.assertEqual((fixed["commit"], fixed["note"]), ("0123abcd", "now requires n > 0"))
-        self.assertTrue(any("only the reporter or a maintainer" in t for _, t in out.replies))
+        self.assertTrue(any("only the author of a problem or a maintainer" in t for _, t in out.replies))
         self.assertEqual(out.labels[0], (2, ["evidence:open"], ["evidence:needs-fix"]))
         self.assertIn(2, out.reopen)
         problem = out.records[0]
@@ -178,6 +183,108 @@ class IntakeTests(unittest.TestCase):
         self.assertEqual(ev.superseded_by, {first["id"]: second["id"]})
         self.assertTrue(ev.disagreement(F + "triple"))
 
+    def test_a_challenge_is_met_by_a_declaration_of_the_library(self):
+        i = issue(40, "challenge", {"decl": F + "double", "property": "`double 0 = 0`",
+                                    "statement": "double 0 = 0", "catches": "an offset",
+                                    "modes": {"F3": True, "F1": False}, "who": "person"}, by="carol")
+        cs = [comment(41, "/met Fixture.double_zero", by="dave"),           # not the author: refused
+              comment(42, "/met Fixture.nope", by="carol", at="2026-09-26T12:00:00Z"),
+              comment(43, "/met `Fixture.double_zero` by rfl", by="carol", at="2026-09-26T13:00:00Z")]
+        out = process(i, cs, self.ctx)
+        c = out.records[0]
+        self.assertEqual((c["kind"], c["property"], c["statement"], c["modes"]),
+                         ("challenge", "`double 0 = 0`", "double 0 = 0", ["F3"]))
+        self.assertEqual(out.labels[0], (40, ["evidence:open"], ["evidence:needs-fix"]))
+        statuses = [r for r in out.records if r["kind"] == "status"]
+        self.assertEqual([(r["state"], r["test"]["name"], r.get("note")) for r in statuses],
+                         [("met", F + "double_zero", "by rfl")])
+        self.assertTrue(any("is not a declaration of the library" in t for _, t in out.replies))
+        self.assertIn((40, "completed"), out.close)
+        ev = self.ev()
+        self.assertEqual(ev.challenges(F + "double"), [(c, "met")])
+        self.assertEqual([(t["test"], t["result"]) for t in ev.tests(F + "double")], [(F + "double_zero", "passes")])
+
+    def test_a_challenge_can_fail_or_be_declined(self):
+        i = issue(44, "challenge", {"decl": F + "triple", "property": "triple 1 = 4", "who": "person"}, by="carol")
+        out = process(i, [comment(45, "/failed triple 1 = 3", by="maint")], self.ctx)
+        self.assertEqual([r.get("state") for r in out.records], [None, "failed"])
+        self.assertIn((44, "not planned"), out.close)
+        j = issue(46, "challenge", {"decl": F + "triple", "property": "p", "who": "person"}, by="carol")
+        out = process(j, [comment(47, "/declined", by="erin", association="MEMBER")], self.ctx)
+        self.assertEqual([r.get("state") for r in out.records], [None, "declined"])
+        # /fixed is for problems
+        out = process(j, [comment(48, "/fixed", by="carol", at="2026-09-26T12:00:00Z")], self.ctx)
+        self.assertTrue(any("is for a problem, and this is a challenge" in t for _, t in out.replies))
+
+    def test_tests_and_names(self):
+        t = issue(50, "test", {"decl": F + "double", "test": "`Fixture.double_zero`", "checks": "the value at 0",
+                               "who": "person"})
+        out = process(t, [], self.ctx)
+        [r] = out.records
+        self.assertEqual((r["kind"], r["test"]["name"], r["checks"]), ("test", F + "double_zero", "the value at 0"))
+        self.assertEqual(r["test"]["hashes"]["meaning"], B.by_name[F + "double_zero"].meaning)
+        self.assertEqual(out.close, [(50, "completed")])
+        bad = issue(51, "test", {"decl": F + "double", "test": "Fixture.nope", "who": "person"})
+        out = process(bad, [], self.ctx)
+        self.assertEqual(out.records, [])
+        self.assertIn("the test: `Fixture.nope` is not a declaration", out.replies[0][1])
+        n = issue(52, "named", {"decl": F + "triple_pos", "name": "Positivity of triple", "what": "result",
+                                "about": "It is positive.", "source": "https://example.org/roadmap", "who": "person"})
+        [r] = process(n, [], self.ctx).records
+        self.assertEqual((r["kind"], r["name"], r["what"], r["source"]),
+                         ("named", "Positivity of triple", "result", {"url": "https://example.org/roadmap"}))
+        self.assertEqual(self.ev().named(F + "triple_pos"), [r])
+
+    def test_a_problem_can_say_its_fix(self):
+        i = issue(55, "problem", {"decl": F + "triple", "category": "F3", "rationale": "0", "fix": "def triple := 3 * n",
+                                  "who": "person"})
+        [r] = process(i, [], self.ctx).records
+        self.assertEqual(r["fix"], "def triple := 3 * n")
+
+    def test_closing_and_reopening_by_hand(self):
+        i = issue(60, "problem", {"decl": F + "triple", "category": "F3", "rationale": "0", "who": "person"}, by="carol")
+        evs = [event(1, "closed", "carol", "2026-09-26T12:00:00Z", "completed"),
+               event(2, "reopened", "maint", "2026-09-26T13:00:00Z"),
+               event(3, "closed", "github-actions[bot]", "2026-09-26T14:00:00Z", "completed"),
+               event(4, "closed", "maint", "2026-09-26T15:00:00Z", "not_planned")]
+        out = process(i, [], self.ctx, events=evs)
+        self.assertEqual([(r.get("state"), r["by"]["identity"]["id"]) for r in out.records],
+                         [(None, "carol"), ("fixed", "carol"), ("reopened", "maint"), ("invalid", "maint")])
+        self.assertEqual(out.records[1]["origin"], {"kind": "event", "ref": f"{REPO}#60/event/1"})
+        # Idempotent, and a close that follows a command (the bot closing after /fixed) says nothing new.
+        self.assertEqual(process(i, [], self.ctx, events=evs).records, [])
+        j = issue(61, "problem", {"decl": F + "triple", "category": "F3", "rationale": "0", "who": "person"}, by="carol")
+        out = process(j, [comment(62, "/fixed", by="carol", at="2026-09-26T12:00:00Z")], self.ctx,
+                      events=[event(5, "closed", "carol", "2026-09-26T12:00:05Z", "completed")])
+        self.assertEqual([r.get("state") for r in out.records if r["kind"] == "status"], ["fixed"])
+        k = issue(63, "challenge", {"decl": F + "triple", "property": "p", "who": "person"}, by="carol")
+        out = process(k, [], self.ctx, events=[event(6, "closed", "carol", "2026-09-26T12:00:00Z", "not_planned")])
+        self.assertEqual([r.get("state") for r in out.records], [None, "declined"])
+
+    def test_the_bulk_issue(self):
+        bulk = {"number": 1, "title": "Reviews", "body": "", "user": user("maint"), "created_at": "2026-09-01T00:00:00Z",
+                "labels": [{"name": "evidence:bulk"}], "author_association": "OWNER"}
+        text = ("Some reviews:\n"
+                "Reviewed-by: Fixture.double — the doubling map, checked at 0 and 1\n"
+                "Test: `Fixture.double` — `Fixture.double_zero` — the value at 0\n"
+                "Named: Fixture.triple_pos — Positivity of triple — Atkin–Lehner-free — it is positive\n"
+                "Challenge: Fixture.triple — triple 2 = 6\n"
+                "Reviewed-by: Fixture.nope — typo\n"
+                '<!--reviewed-by:v1 {"agent": "Claude Code, claude-opus-5-5, session s9"}-->')
+        out = process(bulk, [comment(70, text, by="op")], self.ctx)
+        kinds = [(r["kind"], r["subject"]["name"]) for r in out.records]
+        self.assertEqual(kinds, [("review", F + "double"), ("test", F + "double"), ("named", F + "triple_pos"),
+                                 ("challenge", F + "triple")])
+        self.assertTrue(all(r["by"]["kind"] == "agent" and r["by"]["agent"]["session"] == "s9" for r in out.records))
+        self.assertEqual(out.records[2]["name"], "Positivity of triple")
+        self.assertEqual(out.records[2]["about"], "Atkin–Lehner-free — it is positive")
+        self.assertEqual(out.records[0]["origin"]["ref"],
+                         f"https://github.com/{REPO}/issues/1#issuecomment-70/line/2")
+        [(n, reply)] = out.replies
+        self.assertIn("Recorded 4 of 5 lines", reply)
+        self.assertIn("line 6 (`Fixture.nope`)", reply)
+        self.assertEqual(process(bulk, [comment(70, text, by="op")], self.ctx).records, [])
+
     def test_status_form(self):
         review = process(issue(10, "review", {"decl": F + "double", "who": "person"}), [], self.ctx).records[0]
         problem = process(issue(11, "problem", {"decl": F + "triple", "category": "F3", "rationale": "at 0",
@@ -188,7 +295,7 @@ class IntakeTests(unittest.TestCase):
         self.assertEqual(out.close, [(12, "not planned")])
         self.assertIn("only the author of a review can withdraw it", out.replies[0][1])
         out = process(issue(13, "status", {"record": "0" * 16, "action": "withdraw"}), [], self.ctx)
-        self.assertIn("no review, problem or question has the id", out.replies[0][1])
+        self.assertIn("no record has the id", out.replies[0][1])
         # Its author can: the status is recorded, and said on the review's own issue.
         out = process(issue(14, "status", {"record": review["id"], "action": "withdraw", "note": "a test"},
                             at="2026-09-26T12:00:00Z"), [], self.ctx)
@@ -239,7 +346,8 @@ class CliTests(unittest.TestCase):
                              [F + "triple_pos"])
             self.assertTrue((root / ".github" / "ISSUE_TEMPLATE" / "evidence-review.yml").exists())
             wf = (root / ".github" / "workflows" / "evidence-intake.yml").read_text()
-            self.assertIn("${{ !github.event.issue.pull_request }}", wf)
+            self.assertIn("!github.event.issue.pull_request", wf)
+            self.assertIn("types: [opened, edited, closed, reopened]", wf)
             self.assertIn("pages-workflow: 'pages.yml'", wf)
             buf = io.StringIO()
             with redirect_stdout(buf):

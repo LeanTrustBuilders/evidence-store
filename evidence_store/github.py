@@ -14,12 +14,13 @@ from pathlib import Path
 from evidence_core import Dataset
 
 from .forms import FORMS
-from .intake import Outcome
+from .intake import BULK_LABEL, Outcome
 
 #: Colours of the labels intake uses.
 LABEL_COLOURS = {"evidence:review": "0e8a16", "evidence:problem": "d93f0b",
-                 "evidence:question": "1d76db", "evidence:status": "c5def5", "evidence:open": "fbca04",
-                 "evidence:needs-fix": "e4e669"}
+                 "evidence:question": "1d76db", "evidence:challenge": "5319e7", "evidence:test": "0052cc",
+                 "evidence:named": "bfd4f2", "evidence:status": "c5def5", "evidence:bulk": "ededed",
+                 "evidence:open": "fbca04", "evidence:needs-fix": "e4e669"}
 
 
 def gh(*args: str, input: str | None = None, check: bool = True) -> str:
@@ -79,12 +80,18 @@ def comments(repo: str, number: int) -> list[dict]:
     return gh_json("api", "--paginate", f"repos/{repo}/issues/{number}/comments?per_page=100") or []
 
 
+def events(repo: str, number: int) -> list[dict]:
+    """An issue's events (closed, reopened, labelled, …), oldest first."""
+    return gh_json("api", "--paginate", f"repos/{repo}/issues/{number}/events?per_page=100") or []
+
+
 def recent_issues(repo: str, since: str) -> list[dict]:
-    """Issues of the store's forms updated since ``since`` (RFC 3339), open or closed."""
+    """Issues of the store's forms, and the bulk issue, updated since ``since`` (RFC 3339), open or
+    closed."""
     out, seen = [], set()
-    for f in FORMS.values():
+    for label in [f["label"] for f in FORMS.values()] + [BULK_LABEL]:
         for i in gh_json("api", "--paginate",
-                         f"repos/{repo}/issues?state=all&labels={f['label']}&since={since}&per_page=100") or []:
+                         f"repos/{repo}/issues?state=all&labels={label}&since={since}&per_page=100") or []:
             if i["number"] not in seen and not i.get("pull_request"):
                 seen.add(i["number"])
                 out.append(i)

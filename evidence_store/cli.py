@@ -5,8 +5,11 @@
   evidence-store apply   --repo OWNER/NAME --outcome FILE
   evidence-store check   [--base REV] [--author LOGIN]
   evidence-store submit  --repo OWNER/NAME --decl NAME --verdict accept|problem|question --agent "TOOL, MODEL" …
+  evidence-store challenge --repo OWNER/NAME --decl NAME --property TEXT [--statement LEAN] …
+  evidence-store test    --repo OWNER/NAME --decl NAME --test NAME [--checks TEXT] [--meets ID]
+  evidence-store name    --repo OWNER/NAME --decl NAME --name TEXT [--what result|definition] …
   evidence-store comment --repo OWNER/NAME --issue N --text TEXT [--agent "TOOL, MODEL"]
-  evidence-store status  --repo OWNER/NAME --record ID --action withdraw|fixed|… [--commit C] [--note T]
+  evidence-store status  --repo OWNER/NAME --record ID --action withdraw|fixed|met|… [--test NAME] [--note T]
 
 `init` sets a repository up: the store's directory, the issue forms, and the workflows that run
 intake and check changes. `intake` and `apply` are what the intake workflow runs. `submit` and
@@ -36,7 +39,7 @@ name: Evidence intake
 
 on:
   issues:
-    types: [opened, edited]
+    types: [opened, edited, closed, reopened]
   issue_comment:
     types: [created]
   schedule:
@@ -54,7 +57,9 @@ concurrency:
 
 jobs:
   intake:
-    if: ${{{{ !github.event.issue.pull_request }}}}
+    # Not the bot's own closes and labels: a close by hand is a status, the bot's follows one. (Comments by
+    # bots are read: an agent can act through a bot account.)
+    if: ${{{{ !github.event.issue.pull_request && !(github.event_name == 'issues' && github.event.sender.type == 'Bot') }}}}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -145,7 +150,9 @@ def cmd_intake(args) -> int:
         done.add(number)
         issue = github.issue(args.repo, number)
         cs = github.comments(args.repo, number) if issue.get("comments") else []
-        out.merge(process(issue, cs, ctx, announce=announce))
+        # Closes and reopens by hand are statuses; an issue never closed has none to read.
+        evs = github.events(args.repo, number) if issue.get("closed_at") else []
+        out.merge(process(issue, cs, ctx, announce=announce, events=evs))
     Path(args.outcome).write_text(json.dumps(out.as_json(), indent=1))
     print(f"intake: {len(done)} issues read, {len(out.records)} records added")
     return 0
@@ -197,9 +204,39 @@ def cmd_submit(args) -> int:
     return 0
 
 
+def open_form(args, kind: str, answers: dict) -> int:
+    answers = {"decl": args.decl, "commit": args.commit, "who": "agent" if args.agent else "person",
+               "agent": args.agent, **answers}
+    text = forms.body(kind, answers)
+    title = forms.FORMS[kind]["title"] + args.decl
+    if args.dry_run:
+        print(f"{title}\n\n{text}")
+        return 0
+    from . import github
+    print(github.create_issue(args.repo, title, text, forms.FORMS[kind]["label"]))
+    return 0
+
+
+def cmd_challenge(args) -> int:
+    modes = set(args.modes.split(",")) if args.modes else set()
+    return open_form(args, "challenge", {"property": args.property, "statement": args.statement,
+                                         "catches": args.catches, "involvement": args.involvement,
+                                         "modes": {code: code in modes for code, _ in forms.CHECKS} if modes else {}})
+
+
+def cmd_test(args) -> int:
+    return open_form(args, "test", {"test": args.test, "checks": args.checks, "meets": args.meets,
+                                    "involvement": args.involvement})
+
+
+def cmd_name(args) -> int:
+    return open_form(args, "named", {"name": args.name, "what": args.what, "about": args.about,
+                                     "source": args.source})
+
+
 def cmd_status(args) -> int:
     answers = {"record": args.record, "action": args.action, "commit": args.commit, "note": args.note,
-               "who": "agent" if args.agent else "person", "agent": args.agent}
+               "test": args.test, "who": "agent" if args.agent else "person", "agent": args.agent}
     text = forms.body("status", answers)
     title = f"Status: {args.action} {args.record}"
     if args.dry_run:
@@ -274,10 +311,45 @@ def main(argv: list[str] | None = None) -> int:
     q.add_argument("--dry-run", action="store_true", help="print the issue instead of opening it")
     q.set_defaults(fn=cmd_submit)
 
+    def common(q, decl=True):
+        q.add_argument("--repo", required=True)
+        if decl:
+            q.add_argument("--decl", required=True)
+            q.add_argument("--commit", default="")
+        q.add_argument("--agent", default="", help="'TOOL, MODEL[, session S]': an AI agent wrote it")
+        q.add_argument("--dry-run", action="store_true", help="print the issue instead of opening it")
+
+    q = sub.add_parser("challenge", help="propose a test of a declaration, as the challenge form does")
+    common(q)
+    q.add_argument("--property", required=True, help="what it should satisfy")
+    q.add_argument("--statement", default="", help="the property as a Lean statement")
+    q.add_argument("--catches", default="", help="what a wrong definition would get wrong here")
+    q.add_argument("--modes", default="", help="comma-separated failure modes: F1,F3,…")
+    q.add_argument("--involvement", default="outsider", choices=["outsider", "contributor", "author"])
+    q.set_defaults(fn=cmd_challenge)
+
+    q = sub.add_parser("test", help="list a declaration of the library that tests another")
+    common(q)
+    q.add_argument("--test", required=True, help="the full name of the testing declaration")
+    q.add_argument("--checks", default="", help="what it checks (required for agents)")
+    q.add_argument("--meets", default="", help="the id of a challenge it meets")
+    q.add_argument("--involvement", default="outsider", choices=["outsider", "contributor", "author"])
+    q.set_defaults(fn=cmd_test)
+
+    q = sub.add_parser("name", help="name a result or notable definition")
+    common(q)
+    q.add_argument("--name", required=True)
+    q.add_argument("--what", default="result", choices=["result", "definition"])
+    q.add_argument("--about", default="")
+    q.add_argument("--source", default="")
+    q.set_defaults(fn=cmd_name)
+
     q = sub.add_parser("status", help="change a record's state, as the status form does")
     q.add_argument("--repo", required=True)
-    q.add_argument("--record", required=True, help="the id of the review, problem or question")
-    q.add_argument("--action", required=True, choices=["withdraw", "fixed", "intended", "invalid", "answered", "reopen"])
+    q.add_argument("--record", required=True, help="the id of the record")
+    q.add_argument("--action", required=True, choices=["withdraw", "fixed", "intended", "invalid", "answered",
+                                                       "met", "failed", "declined", "reopen"])
+    q.add_argument("--test", default="", help="for met: the declaration that meets the challenge")
     q.add_argument("--commit", default="", help="for fixed: the commit that fixed it")
     q.add_argument("--note", default="")
     q.add_argument("--agent", default="", help="'TOOL, MODEL[, session S]': an AI agent asks for it")

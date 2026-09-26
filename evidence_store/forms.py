@@ -1,11 +1,14 @@
 """The store's issue forms: one definition, from which come the templates GitHub shows, the parser
 for the issues they produce, and the body an agent writes to submit the same thing.
 
-Three forms, one per verdict of a review (S3): **review** (an acceptance, with what was checked, the
-reference and caveats), **problem** (with its failure mode) and **question**; and a fourth,
-**status**, which changes the state of a record: withdraw a review, mark a problem fixed, intended or
-not a problem, mark a question answered, reopen. Each labels its issue (`evidence:review`, …), which
-is how intake knows what an issue is.
+One form per verdict of a review (S3): **review** (an acceptance, with what was checked, the
+reference and caveats), **problem** (with its failure mode, and a suggested fix) and **question**.
+Then **challenge**, a proposed test: a property the declaration should have, which someone can then
+prove in the library; **test**, a declaration of the library that tests another; and **named**, a
+named result or notable definition. Last, **status**, which changes the state of a record: withdraw
+it, mark a problem fixed, intended or not a problem, a question answered, a challenge met, failed or
+declined, reopen. Each labels its issue (`evidence:review`, …), which is how intake knows what an
+issue is.
 
 GitHub writes a form's answers into the issue body as ``### <label>`` sections, in form order, with
 ``_No response_`` for an empty field and ``- [X] …`` / ``- [ ] …`` for checkboxes. ``parse`` reads
@@ -91,6 +94,8 @@ FORMS = {
              "required": True},
             {"id": "rationale", "type": "textarea", "label": "Why", "required": True,
              "description": "The counterexample, the case, or the step that fails."},
+            {"id": "fix", "type": "textarea", "label": "Suggested fix",
+             "description": "Optional: what it should be, in Lean or in words."},
             INVOLVED, WHO_FIELD, AGENT,
         ],
     },
@@ -106,21 +111,82 @@ FORMS = {
             INVOLVED, WHO_FIELD, AGENT,
         ],
     },
+    "challenge": {
+        "file": "evidence-challenge.yml", "label": "evidence:challenge", "title": "Challenge: ",
+        "name": "Propose a test of a declaration",
+        "description": "A property it should have, for someone to prove in the library.",
+        "intro": "A challenge is a **proposed test**: something the declaration should satisfy if it means "
+                 "what it should (a value, an edge case, agreement with another notion). It stays open "
+                 "until someone proves it in the library and comments `/met <the declaration that proves "
+                 "it>`; `/failed` says the declaration does not have the property (then report the "
+                 "problem), and a maintainer can comment `/declined`.",
+        "fields": [
+            DECL, COMMIT,
+            {"id": "property", "type": "textarea", "label": "What it should satisfy", "required": True,
+             "description": "In words, or in Lean: `vonMangoldt 1 = 0`, \"agrees with Mathlib's … on …\"."},
+            {"id": "statement", "type": "textarea", "label": "As a Lean statement",
+             "description": "Optional: the statement to prove, as you would write it after `theorem`."},
+            {"id": "catches", "type": "textarea", "label": "What it would catch",
+             "description": "Optional: what a wrong definition would get wrong here."},
+            {"id": "modes", "type": "checkboxes", "label": "Failure modes it tests", "options": CHECKS,
+             "description": "Optional: which of the ways a definition goes wrong it would catch."},
+            INVOLVED, WHO_FIELD, AGENT,
+        ],
+    },
+    "test": {
+        "file": "evidence-test.yml", "label": "evidence:test", "title": "Test: ",
+        "name": "List a test of a declaration",
+        "description": "A declaration of the library that tests it: a value, a degenerate case, an agreement.",
+        "intro": "A test is a declaration of the library that pins another down. It is not a judgement: "
+                 "Lean checks it at every commit, and the page shows it as passing while it is there "
+                 "without `sorry`.",
+        "fields": [
+            DECL, COMMIT,
+            {"id": "test", "type": "input", "label": "Tested by", "required": True,
+             "description": "The full name of the declaration that tests it, e.g. `MyLib.Foo.bar_zero`."},
+            {"id": "checks", "type": "textarea", "label": "What it checks",
+             "description": "Optional for people, required for AI agents."},
+            {"id": "meets", "type": "input", "label": "Meets the challenge",
+             "description": "Optional: the id of a challenge it meets (16 hexadecimal digits)."},
+            INVOLVED, WHO_FIELD, AGENT,
+        ],
+    },
+    "named": {
+        "file": "evidence-named.yml", "label": "evidence:named", "title": "Named: ",
+        "name": "Name a result or notable definition",
+        "description": "Point readers at what matters: a named theorem, a notable definition.",
+        "intro": "Most of a library is API and steps of proofs. A name marks a declaration out as one "
+                 "to read first.",
+        "fields": [
+            DECL, COMMIT,
+            {"id": "name", "type": "input", "label": "Name", "required": True,
+             "description": "What mathematicians call it: \"Dirichlet's unit theorem\"."},
+            {"id": "what", "type": "dropdown", "label": "It is",
+             "options": [("result", "a named result"), ("definition", "a notable definition")]},
+            {"id": "about", "type": "textarea", "label": "In one sentence"},
+            {"id": "source", "type": "input", "label": "Named where",
+             "description": "Optional: a paper, a roadmap, a URL."},
+            WHO_FIELD, AGENT,
+        ],
+    },
     "status": {
         "file": "evidence-status.yml", "label": "evidence:status", "title": "Status: ",
-        "name": "Change the state of a review",
-        "description": "Withdraw your review; mark a problem fixed, intended or not a problem; mark a question answered; reopen.",
-        "intro": "Usually opened from the buttons under a review, with its id filled in. It is recorded if your "
-                 "account may make the change: the author of a review can withdraw it; the reporter of a problem, "
-                 "the asker of a question, and the maintainers can resolve or reopen it. The same changes can be "
-                 "made by commenting on the review's own issue (`/withdraw`, `/fixed <commit>`, …).",
+        "name": "Change the state of a review, problem, question or challenge",
+        "description": "Withdraw what you wrote; mark a problem fixed, intended or not a problem; a question answered; a challenge met, failed or declined; reopen.",
+        "intro": "Usually opened from the buttons of a page, with the record's id filled in. It is recorded if "
+                 "your account may make the change: the author of a record can withdraw it; the reporter of a "
+                 "problem, the asker of a question, the author of a challenge and the maintainers can resolve or "
+                 "reopen it. The same changes can be made by commenting on the record's own issue (`/withdraw`, "
+                 "`/fixed <commit>`, `/met <declaration>`, …).",
         "fields": [
             {"id": "record", "type": "input", "label": "Record", "required": True,
-             "description": "The id of the review, problem or question: 16 hexadecimal digits."},
+             "description": "The id of the record: 16 hexadecimal digits."},
             {"id": "action", "type": "input", "label": "Change", "required": True,
-             "description": "One of: withdraw, fixed, intended, invalid, answered, reopen."},
+             "description": "One of: withdraw, fixed, intended, invalid, answered, met, failed, declined, reopen."},
             {"id": "commit", "type": "input", "label": "Fixed in",
              "description": "For `fixed`: the commit that fixed it."},
+            {"id": "test", "type": "input", "label": "Met by",
+             "description": "For `met`: the full name of the declaration that proves the challenge."},
             {"id": "note", "type": "textarea", "label": "Note"},
             WHO_FIELD, AGENT,
         ],
