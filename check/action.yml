@@ -1,0 +1,43 @@
+name: Evidence check
+description: >-
+  Checks a change to the evidence store: every record valid, none changed or removed, and the
+  records a pull request (or a person's push) adds written by that account. Needs a checkout with
+  history (fetch-depth 0).
+inputs:
+  store:
+    description: The store's directory.
+    default: evidence
+  ref:
+    description: The revision of evidence-store to run.
+    default: main
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: evidence-store
+      shell: bash
+      run: pip install -q "git+https://github.com/LeanTrustBuilders/evidence-store@${{ inputs.ref }}"
+    - name: Check the store
+      shell: bash
+      env:
+        EVENT: ${{ github.event_name }}
+        BASE_REF: ${{ github.base_ref }}
+        PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        BEFORE: ${{ github.event.before }}
+        ACTOR: ${{ github.actor }}
+      run: |
+        if [ "$EVENT" = pull_request ]; then
+          evidence-store check --store "${{ inputs.store }}" --base "origin/$BASE_REF" --author "$PR_AUTHOR"
+        elif [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then
+          # The intake bot writes records for the accounts whose issues it read; anyone else writes
+          # their own.
+          if [ "$ACTOR" = "github-actions[bot]" ]; then
+            evidence-store check --store "${{ inputs.store }}" --base "$BEFORE"
+          else
+            evidence-store check --store "${{ inputs.store }}" --base "$BEFORE" --author "$ACTOR"
+          fi
+        else
+          evidence-store check --store "${{ inputs.store }}"
+        fi

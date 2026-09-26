@@ -1,0 +1,12 @@
+{"decl":"Fixture.triple","text":"A definition that version B leaves alone. "}
+{"decl":"Fixture.double","text":"A definition that version B changes. "}
+{"decl":"Fixture.triple_three'","text":"Renamed in B to `triple_three'`: carried over by meaning hash. "}
+{"decl":"Fixture.double_zero","text":"Its statement mentions `double`, which B changes: stale underneath. "}
+{"decl":"Fixture.triple_one","text":"Its statement changes in B: stale. "}
+{"decl":"Fixture.one_pos'","text":"A project lemma used only inside a proof field. "}
+{"decl":"Fixture.triple_comm","text":"Only a binder name changes in B: current. "}
+{"decl":"Fixture.triple_two","text":"Only its proof changes in B: current. "}
+{"decl":"Fixture.Pos","text":"A structure, with a field that is a proof. "}
+{"decl":"Fixture.one","text":"A definition whose value carries a proof: its `meaning` edges skip the lemma the proof uses,\nits `term` edges do not. "}
+{"decl":"Fixture.triple_pos","text":"A statement written with `lemma`-style intent, keyword `theorem` here. "}
+{"decl":"Fixture.double_triple","text":"Uses a declaration of another module. "}

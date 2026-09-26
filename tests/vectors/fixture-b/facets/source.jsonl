@@ -1,0 +1,16 @@
+{"decl":"Fixture.triple","end":[16,39],"keyword":"def","path":"Fixture/Basic.lean","start":[15,0]}
+{"decl":"Fixture.not_isSmall_twelve","end":[41,94],"keyword":"theorem","path":"Fixture/Basic.lean","start":[41,0]}
+{"decl":"Fixture.double","end":[13,35],"keyword":"def","path":"Fixture/Basic.lean","start":[12,0]}
+{"decl":"Fixture.triple_three'","end":[31,43],"keyword":"theorem","path":"Fixture/Basic.lean","start":[30,0]}
+{"decl":"Fixture.double_zero","end":[19,54],"keyword":"theorem","path":"Fixture/Basic.lean","start":[18,0]}
+{"decl":"Fixture.triple_one","end":[22,48],"keyword":"theorem","path":"Fixture/Basic.lean","start":[21,0]}
+{"decl":"Fixture.one_pos'","end":[49,39],"keyword":"theorem","path":"Fixture/Basic.lean","start":[48,0]}
+{"decl":"Fixture.triple_comm","end":[28,59],"keyword":"theorem","path":"Fixture/Basic.lean","start":[27,0]}
+{"decl":"Fixture.IsSmall","end":[38,38],"keyword":"def","path":"Fixture/Basic.lean","start":[38,0]}
+{"decl":"Fixture.isSmall_three","end":[40,83],"keyword":"theorem","path":"Fixture/Basic.lean","start":[40,0]}
+{"decl":"Fixture.triple_two","end":[25,58],"keyword":"theorem","path":"Fixture/Basic.lean","start":[24,0]}
+{"decl":"Fixture.Pos","end":[46,15],"keyword":"structure","path":"Fixture/Basic.lean","start":[43,0]}
+{"decl":"Fixture.one","end":[53,30],"keyword":"def","path":"Fixture/Basic.lean","start":[51,0]}
+{"decl":"Fixture.instInhabitedPos","end":[55,33],"keyword":"instance","path":"Fixture/Basic.lean","start":[55,0]}
+{"decl":"Fixture.triple_pos","end":[36,22],"keyword":"theorem","path":"Fixture/Basic.lean","start":[33,0]}
+{"decl":"Fixture.double_triple","end":[7,29],"keyword":"theorem","path":"Fixture/Uses.lean","start":[5,0]}

@@ -1,0 +1,61 @@
+name: Evidence intake
+description: >-
+  Turns issues opened with the evidence forms, and the comments on them, into S3 records in the
+  repository's evidence store; commits them, then replies on the issues.
+inputs:
+  store:
+    description: The store's directory.
+    default: evidence
+  sweep-days:
+    description: Also read the evidence issues updated in the last this many days.
+    default: '14'
+  pages-workflow:
+    description: A workflow to run once records were added (to rebuild a page), or empty.
+    default: ''
+  ref:
+    description: The revision of evidence-store to run.
+    default: main
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: evidence-store
+      shell: bash
+      run: pip install -q "git+https://github.com/LeanTrustBuilders/evidence-store@${{ inputs.ref }}"
+    - name: Read issues and comments
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        evidence-store intake --repo "$GITHUB_REPOSITORY" --store "${{ inputs.store }}" \
+          --event "$GITHUB_EVENT_PATH" --event-name "$GITHUB_EVENT_NAME" \
+          --sweep-days "${{ inputs.sweep-days }}" --outcome "$RUNNER_TEMP/outcome.json"
+    - name: Commit the records
+      id: push
+      shell: bash
+      run: |
+        if [ -n "$(git status --porcelain -- "${{ inputs.store }}")" ]; then
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "${{ inputs.store }}"
+          git commit -qm "evidence: $(jq '.records | length' "$RUNNER_TEMP/outcome.json") records from issues"
+          for attempt in 1 2 3 4 5; do
+            git pull -q --rebase && git push -q && break
+            [ "$attempt" = 5 ] && exit 1
+            sleep $((attempt * 3))
+          done
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Reply on the issues
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: evidence-store apply --repo "$GITHUB_REPOSITORY" --outcome "$RUNNER_TEMP/outcome.json"
+    - name: Rebuild the page
+      if: steps.push.outputs.pushed == 'true' && inputs.pages-workflow != ''
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: gh workflow run "${{ inputs.pages-workflow }}" -R "$GITHUB_REPOSITORY" --ref "$(git rev-parse --abbrev-ref HEAD)"

@@ -1,0 +1,16 @@
+{"axioms":[],"decl":"Fixture.triple","sorry":false}
+{"axioms":["Quot.sound","propext"],"decl":"Fixture.not_isSmall_twelve","sorry":false}
+{"axioms":[],"decl":"Fixture.double","sorry":false}
+{"axioms":[],"decl":"Fixture.triple_three'","sorry":false}
+{"axioms":["propext"],"decl":"Fixture.double_zero","sorry":false}
+{"axioms":[],"decl":"Fixture.triple_one","sorry":false}
+{"axioms":[],"decl":"Fixture.one_pos'","sorry":false}
+{"axioms":[],"decl":"Fixture.triple_comm","sorry":false}
+{"axioms":[],"decl":"Fixture.IsSmall","sorry":false}
+{"axioms":["Quot.sound","propext"],"decl":"Fixture.isSmall_three","sorry":false}
+{"axioms":[],"decl":"Fixture.triple_two","sorry":false}
+{"axioms":[],"decl":"Fixture.Pos","sorry":false}
+{"axioms":[],"decl":"Fixture.one","sorry":false}
+{"axioms":[],"decl":"Fixture.instInhabitedPos","sorry":false}
+{"axioms":["Quot.sound","propext"],"decl":"Fixture.triple_pos","sorry":false}
+{"axioms":["Quot.sound","propext"],"decl":"Fixture.double_triple","sorry":false}
