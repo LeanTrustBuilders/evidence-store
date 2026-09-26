@@ -366,5 +366,58 @@ class CliTests(unittest.TestCase):
                              ("agent", "Claude Code, claude-opus-5-5", True, False))
 
 
+class DatasetCommandTests(unittest.TestCase):
+    """`evidence-store dataset`: which release it fetches, and where it puts it (gh is replaced)."""
+
+    def setUp(self):
+        from evidence_store import github
+        self.github, self.calls = github, []
+        self.saved = github.gh, github.gh_json
+        releases = [{"tagName": "dataset-bbb", "createdAt": "2026-09-02"}, {"tagName": "other", "createdAt": "2026-09-03"},
+                    {"tagName": "dataset-aaa", "createdAt": "2026-09-01"}]
+        github.gh_json = lambda *a: releases
+
+        def gh(*args, **kw):
+            self.calls.append(args)
+            where = Path(args[args.index("-D") + 1])
+            with tempfile.TemporaryDirectory() as src:
+                (Path(src) / "meta.json").write_text("{}")
+                import tarfile
+                with tarfile.open(where / "dataset.tar.gz", "w:gz") as t:
+                    t.add(Path(src) / "meta.json", arcname="meta.json")
+            return ""
+        github.gh = gh
+        self.tmp = tempfile.TemporaryDirectory()
+        self.store = Path(self.tmp.name) / "evidence"
+        sto.Store.init(self.store, sto.default_config("o/lib", "Lib", "o/data"))
+
+    def tearDown(self):
+        self.github.gh, self.github.gh_json = self.saved
+        self.tmp.cleanup()
+
+    def run_cli(self, *args) -> list[str]:
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            self.assertEqual(cli(["dataset", "--store", str(self.store), *args]), 0)
+        return buf.getvalue().split()
+
+    def test_a_commit_is_fetched_from_where_the_store_says(self):
+        out = Path(self.tmp.name) / "ds"
+        self.assertEqual(self.run_cli("--commit", "0123456789abcdef", "--out", str(out)), [str(out)])
+        self.assertEqual(self.calls[0][:5], ("release", "download", "dataset-0123456789ab", "-R", "o/data"))
+        self.assertEqual(sorted(p.name for p in out.iterdir()), ["meta.json"])
+
+    def test_every_dataset_oldest_first(self):
+        out = Path(self.tmp.name) / "all"
+        self.assertEqual(self.run_cli("--all", "--out", str(out)), [str(out / "dataset-aaa"), str(out / "dataset-bbb")])
+
+    def test_a_repository_without_a_store(self):
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            self.assertEqual(cli(["dataset", "--store", "/nonexistent", "--repo", "o/site", "--tag", "lml-{commit12}",
+                                  "--commit", "abcdef", "--out", str(Path(self.tmp.name) / "x")]), 0)
+        self.assertEqual(self.calls[0][2:5], ("lml-abcdef", "-R", "o/site"))
+
+
 if __name__ == "__main__":
     unittest.main()

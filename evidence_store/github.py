@@ -43,31 +43,44 @@ class Datasets:
         self.override = override
         self.loaded: dict[str, Dataset] = {}
 
-    def latest_tag(self) -> str:
+    def tags(self) -> list[str]:
+        """Every release that is a dataset, oldest first."""
         prefix = self.config["tag"].split("{")[0]
-        releases = gh_json("release", "list", "-R", self.config["repo"], "--limit", "100",
+        releases = gh_json("release", "list", "-R", self.config["repo"], "--limit", "1000",
                            "--json", "tagName,createdAt")
-        tags = sorted((r for r in releases or [] if r["tagName"].startswith(prefix)),
-                      key=lambda r: r["createdAt"])
-        if not tags:
-            raise LookupError(f"no release of {self.config['repo']} is a dataset ({prefix}…)")
-        return tags[-1]["tagName"]
+        return [r["tagName"] for r in sorted((r for r in releases or [] if r["tagName"].startswith(prefix)),
+                                             key=lambda r: r["createdAt"])]
 
-    def __call__(self, commit: str) -> Dataset:
-        if self.override is not None:
-            return Dataset.load(self.override)
-        tag = self.config["tag"].replace("{commit12}", commit[:12]).replace("{commit}", commit) \
+    def latest_tag(self) -> str:
+        tags = self.tags()
+        if not tags:
+            raise LookupError(f"no release of {self.config['repo']} is a dataset "
+                              f"({self.config['tag'].split('{')[0]}…)")
+        return tags[-1]
+
+    def tag(self, commit: str) -> str:
+        """The release of a commit's dataset; the latest when ``commit`` is empty."""
+        return self.config["tag"].replace("{commit12}", commit[:12]).replace("{commit}", commit) \
             if commit else self.latest_tag()
-        if tag in self.loaded:
-            return self.loaded[tag]
-        where = self.cache / tag
+
+    def download(self, tag: str, where: Path) -> Path:
+        """Downloads and unpacks a dataset release into ``where`` (unless it is there already)."""
         if not (where / "meta.json").exists():
             where.mkdir(parents=True, exist_ok=True)
             gh("release", "download", tag, "-R", self.config["repo"], "-p", self.config["asset"],
                "-D", str(where), "--clobber")
             with tarfile.open(where / self.config["asset"]) as t:
                 t.extractall(where, filter="data")
-        ds = Dataset.load(where)
+            (where / self.config["asset"]).unlink()
+        return where
+
+    def __call__(self, commit: str) -> Dataset:
+        if self.override is not None:
+            return Dataset.load(self.override)
+        tag = self.tag(commit)
+        if tag in self.loaded:
+            return self.loaded[tag]
+        ds = Dataset.load(self.download(tag, self.cache / tag))
         self.loaded[tag] = ds
         return ds
 

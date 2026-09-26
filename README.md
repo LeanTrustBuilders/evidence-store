@@ -115,7 +115,12 @@ evidence-store test    --repo OWNER/NAME --decl NAME --test NAME [--checks TEXT]
 evidence-store name    --repo OWNER/NAME --decl NAME --name TEXT [--what result|definition] [--about TEXT] [--source TEXT]
 evidence-store comment --repo OWNER/NAME --issue N --text TEXT [--agent "TOOL, MODEL"]
 evidence-store status  --repo OWNER/NAME --record ID --action withdraw|fixed|intended|invalid|answered|met|failed|declined|reopen [--test NAME] …
+evidence-store dataset [--commit SHA | --all] --out DIR [--store evidence] [--repo OWNER/NAME --tag 'dataset-{commit12}']
 ```
+
+`dataset` fetches datasets from the releases that hold them, as intake does: where `store.json` says
+(`datasets`), or, for a repository without a store, where `--repo` and `--tag` say. Pages and
+workflows use it rather than downloading releases themselves.
 
 The composite actions `LeanTrustBuilders/evidence-store/intake` and `…/check` are what the generated
 workflows run. `intake` reads, then commits the records, then replies on the issues, so that a reply

@@ -176,6 +176,35 @@ def cmd_check(args) -> int:
     return 1 if errs else 0
 
 
+def cmd_dataset(args) -> int:
+    """Fetches datasets published as releases: where a store's config says (``store.json``,
+    ``datasets``), or where ``--repo``/``--tag`` say for a repository without a store."""
+    from .github import Datasets
+    config = {"repo": None, "tag": "dataset-{commit12}", "asset": "dataset.tar.gz"}
+    store_dir = Path(args.store)
+    if (store_dir / sto.CONFIG).exists():
+        config.update(sto.Store.load(store_dir).config["datasets"])
+    for key in ("repo", "tag", "asset"):
+        if getattr(args, key):
+            config[key] = getattr(args, key)
+    if not config["repo"]:
+        print(f"no store at {store_dir}: say where the datasets are with --repo (and --tag)", file=sys.stderr)
+        return 2
+    ds = Datasets({"datasets": config}, cache=Path(args.out))
+    out = Path(args.out)
+    try:
+        if args.all:
+            for tag in ds.tags():
+                print(ds.download(tag, out / tag))
+        else:
+            tag = ds.tag(args.commit or "")
+            print(ds.download(tag, out))
+    except (LookupError, RuntimeError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def agent_mark(agent: str) -> str:
     a = rec.parse_agent(agent)
     return "<!-- agent: " + "; ".join(f"{k}={v}" for k, v in a.items()) + " -->"
@@ -287,6 +316,16 @@ def main(argv: list[str] | None = None) -> int:
     q.add_argument("--repo", required=True)
     q.add_argument("--outcome", required=True)
     q.set_defaults(fn=cmd_apply)
+
+    q = sub.add_parser("dataset", help="fetch the dataset of a commit (or every one) from its release")
+    q.add_argument("--store", default="evidence", help="the store whose config says where datasets are")
+    q.add_argument("--commit", help="the library commit (default: the latest dataset)")
+    q.add_argument("--all", action="store_true", help="every dataset, each into OUT/<tag>, oldest first")
+    q.add_argument("--repo", help="the repository whose releases hold the datasets (default: the store's)")
+    q.add_argument("--tag", help="the release tag, with {commit12} or {commit} (default: the store's)")
+    q.add_argument("--asset", help="the release asset (default: dataset.tar.gz)")
+    q.add_argument("--out", required=True, help="where to unpack it (with --all, a directory of them)")
+    q.set_defaults(fn=cmd_dataset)
 
     q = sub.add_parser("check", help="check a change to the store")
     q.add_argument("--repo-dir", default=".")
