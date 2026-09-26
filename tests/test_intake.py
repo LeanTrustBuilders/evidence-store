@@ -178,6 +178,36 @@ class IntakeTests(unittest.TestCase):
         self.assertEqual(ev.superseded_by, {first["id"]: second["id"]})
         self.assertTrue(ev.disagreement(F + "triple"))
 
+    def test_status_form(self):
+        review = process(issue(10, "review", {"decl": F + "double", "who": "person"}), [], self.ctx).records[0]
+        problem = process(issue(11, "problem", {"decl": F + "triple", "category": "F3", "rationale": "at 0",
+                                                "who": "person"}, by="carol"), [], self.ctx).records[0]
+        # Someone else cannot withdraw alice's review; an unknown id is refused too.
+        out = process(issue(12, "status", {"record": review["id"], "action": "withdraw"}, by="bob"), [], self.ctx)
+        self.assertEqual(out.records, [])
+        self.assertEqual(out.close, [(12, "not planned")])
+        self.assertIn("only the author of a review can withdraw it", out.replies[0][1])
+        out = process(issue(13, "status", {"record": "0" * 16, "action": "withdraw"}), [], self.ctx)
+        self.assertIn("no review, problem or question has the id", out.replies[0][1])
+        # Its author can: the status is recorded, and said on the review's own issue.
+        out = process(issue(14, "status", {"record": review["id"], "action": "withdraw", "note": "a test"},
+                            at="2026-09-26T12:00:00Z"), [], self.ctx)
+        [st] = out.records
+        self.assertEqual((st["kind"], st["target"], st["state"], st["note"]), ("status", review["id"], "withdrawn", "a test"))
+        self.assertEqual(st["origin"], {"kind": "issue", "ref": f"{REPO}#14"})
+        self.assertEqual([n for n, _ in out.replies], [14, 10])
+        self.assertIn("from #14", out.replies[1][1])
+        self.assertEqual(out.close, [(14, "completed"), (10, "not planned")])
+        self.assertEqual(self.ev().counting_accepts(F + "double", Policy()), [])
+        self.assertEqual(process(issue(14, "status", {"record": review["id"], "action": "withdraw"}), [], self.ctx).records, [])
+        # A maintainer marks the problem fixed, with the commit; "/fixed" as typed works too.
+        out = process(issue(15, "status", {"record": problem["id"], "action": "/fixed", "commit": "0123abcd"},
+                            by="erin", association="MEMBER", at="2026-09-26T13:00:00Z"), [], self.ctx)
+        [st] = out.records
+        self.assertEqual((st["state"], st["commit"], st["by"]["identity"]["id"]), ("fixed", "0123abcd", "erin"))
+        self.assertEqual(out.close, [(15, "completed"), (11, "completed")])
+        self.assertEqual(self.ev().state(problem["id"]), "fixed")
+
     def test_a_commit_without_a_dataset_yet(self):
         def missing(commit):
             raise LookupError("release not found")

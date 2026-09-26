@@ -18,7 +18,7 @@ from .intake import Outcome
 
 #: Colours of the labels intake uses.
 LABEL_COLOURS = {"evidence:review": "0e8a16", "evidence:problem": "d93f0b",
-                 "evidence:question": "1d76db", "evidence:open": "fbca04",
+                 "evidence:question": "1d76db", "evidence:status": "c5def5", "evidence:open": "fbca04",
                  "evidence:needs-fix": "e4e669"}
 
 

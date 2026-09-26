@@ -17,6 +17,10 @@ problem or a question. Each later comment on it becomes a record too:
   Anything after the command is the status's note;
 * anything else becomes a ``comment`` replying to it: the discussion, and the answers to questions.
 
+An issue opened with the **status** form asks for one of those changes to a record named by its id,
+under the same rules; it is how a page offers "Withdraw" or "Mark fixed" as a button. The change is
+also said, and done, on the record's own issue.
+
 Every record is by the GitHub account that wrote the issue or comment. An AI agent says so in the
 form ("Written by: an AI agent") or with a line ``<!-- agent: tool=…; model=…; session=… -->`` in a
 comment; an account of type ``Bot`` is an agent too.
@@ -223,6 +227,8 @@ def process_issue(issue: dict, ctx: Context, announce: bool = True) -> tuple[Out
     kind = forms.kind_of(issue.get("labels", []))
     if kind is None or issue.get("pull_request"):
         return out, None
+    if kind == "status":
+        return process_status_issue(issue, ctx, announce), None
     ref = f"{ctx.repo}#{issue['number']}"
     existing = [r for r in ctx.store.from_origin(ref) if r.get("kind") == "review"]
     if existing:
@@ -279,6 +285,101 @@ def command_of(text: str) -> tuple[str, list[str], str] | None:
     return m.group(1), args, note
 
 
+#: The state a command sets, and what the reply calls it.
+STATE_OF = {"withdraw": "withdrawn", "fixed": "fixed", "intended": "intended", "invalid": "invalid",
+            "answered": "answered", "reopen": "reopened"}
+LABEL_OF = {"withdrawn": "withdrawn", "fixed": "fixed", "intended": "intended as it is", "invalid": "invalid",
+            "answered": "answered", "reopened": "reopened"}
+ALIASES = {"withdrawn": "withdraw", "fix": "fixed", "answer": "answered", "reopened": "reopen",
+           "not a problem": "invalid", "intended as it is": "intended"}
+
+
+def decide(ctx: Context, target: dict, command: str, login: str, association: str) -> tuple[str | None, str | None]:
+    """The state ``command`` sets on ``target`` when ``login`` asks, or why it may not."""
+    verdict = target.get("verdict")
+    author = (target.get("by", {}).get("identity") or {}).get("id") == login
+    maintainer = association in MAINTAINER_ASSOCIATIONS or login in ctx.maintainers
+    if command == "withdraw":
+        return ("withdrawn", None) if author else (None, "only the author of a review can withdraw it")
+    if command in ("fixed", "intended", "invalid"):
+        if verdict != "problem":
+            return None, f"`{command}` is for problems"
+        return (command, None) if author or maintainer else \
+            (None, "only the reporter or a maintainer can say how a problem was resolved")
+    if command == "answered":
+        if verdict != "question":
+            return None, "`answered` is for questions"
+        return ("answered", None) if author or maintainer else (None, "only the asker or a maintainer can close a question")
+    if command == "reopen":
+        if verdict not in ("problem", "question"):
+            return None, "only problems and questions can be reopened"
+        return ("reopened", None) if author or maintainer else (None, "only the author or a maintainer can reopen it")
+    return None, f"`{command}` is not a change intake knows"
+
+
+def issue_number(target: dict, repo: str) -> int | None:
+    """The number of the issue a record came from, if it came from one of ``repo``'s issues."""
+    ref = (target.get("origin") or {}).get("ref", "")
+    if (target.get("origin") or {}).get("kind") == "issue" and ref.startswith(repo + "#"):
+        n = ref.split("#", 1)[1]
+        return int(n) if n.isdigit() else None
+    return None
+
+
+def on_target_issue(out: "Outcome", n: int, state: str) -> None:
+    """What a status does to the record's own issue: reopen it, or close it."""
+    if state == "reopened":
+        out.reopen.append(n)
+        out.labels.append((n, ["evidence:open"], []))
+    else:
+        out.labels.append((n, [], ["evidence:open"]))
+        out.close.append((n, "completed" if state in ("fixed", "answered") else "not planned"))
+
+
+def process_status_issue(issue: dict, ctx: Context, announce: bool = True) -> Outcome:
+    """An issue opened with the status form: the change it asks for, if its author may make it."""
+    out = Outcome()
+    ref = f"{ctx.repo}#{issue['number']}"
+    if ctx.store.from_origin(ref):
+        return out
+    n = issue["number"]
+    a = forms.parse("status", issue.get("body", ""))
+    rid = (a.get("record") or "").strip().strip("`")
+    command = (a.get("action") or "").strip().strip("`").lstrip("/").lower()
+    command = ALIASES.get(command, command)
+    target = next((r for r in ctx.store.records if r.get("id") == rid and r.get("kind") == "review"), None)
+    user = issue.get("user", {})
+    if target is None:
+        state, refusal = None, f"no review, problem or question has the id `{rid}` in this store"
+    else:
+        state, refusal = decide(ctx, target, command, user.get("login", ""), issue.get("author_association", ""))
+    if state is None:
+        if announce:
+            out.replies.append((n, f"Not recorded: {refusal}."))
+            out.close.append((n, "not planned"))
+        return out
+    agent = rec.parse_agent(a["agent"]) if (a.get("who") == "agent" or a.get("agent")) else None
+    by = author_of(user, agent)
+    r = {"schema": rec.SCHEMA, "kind": "status", "target": target["id"], "state": state, "by": by,
+         "at": iso(issue.get("created_at", "")), "origin": {"kind": "issue", "ref": ref}}
+    if a.get("note"):
+        r["note"] = a["note"]
+    if a.get("commit") and state == "fixed":
+        r["commit"] = a["commit"].strip().strip("`")
+    r = rec.with_id(r)
+    out.records.append(r)
+    what = f"`{target['id']}` ({target.get('verdict')} of `{target['subject']['name']}`)"
+    out.replies.append((n, f"Recorded: {what} is now **{LABEL_OF[state]}**"
+                           + (f" (`{r['commit'][:12]}`)" if r.get("commit") else "") + f", by {rec.who(by)}."))
+    out.close.append((n, "completed"))
+    home = issue_number(target, ctx.repo)
+    if home is not None:
+        out.replies.append((home, f"Now **{LABEL_OF[state]}**, by {rec.who(by)}, from #{n}."
+                                  + (f" {r['note']}" if r.get("note") else "")))
+        on_target_issue(out, home, state)
+    return out
+
+
 def process_comment(comment: dict, issue: dict, target: dict, ctx: Context,
                     announce: bool = True) -> Outcome:
     out = Outcome()
@@ -296,34 +397,7 @@ def process_comment(comment: dict, issue: dict, target: dict, ctx: Context,
     cmd = command_of(text)
     if cmd is not None:
         name, args, note = cmd
-        verdict = target.get("verdict")
-        author = (target.get("by", {}).get("identity") or {}).get("id") == user.get("login")
-        maintainer = is_maintainer(ctx, comment)
-        state, refusal = None, None
-        if name == "withdraw":
-            state = "withdrawn" if author else None
-            refusal = None if author else "only the author of a review can withdraw it"
-        elif name in ("fixed", "intended", "invalid"):
-            if verdict != "problem":
-                refusal = f"`/{name}` is for problems"
-            elif author or maintainer:
-                state = name
-            else:
-                refusal = "only the reporter or a maintainer can say how a problem was resolved"
-        elif name == "answered":
-            if verdict != "question":
-                refusal = "`/answered` is for questions"
-            elif author or maintainer:
-                state = "answered"
-            else:
-                refusal = "only the asker or a maintainer can close a question"
-        elif name == "reopen":
-            if verdict not in ("problem", "question"):
-                refusal = "only problems and questions can be reopened"
-            elif author or maintainer:
-                state = "reopened"
-            else:
-                refusal = "only the author or a maintainer can reopen it"
+        state, refusal = decide(ctx, target, name, user.get("login", ""), comment.get("author_association", ""))
         if state is not None:
             r = {**base, "kind": "status", "target": target["id"], "state": state}
             if note:
@@ -332,16 +406,9 @@ def process_comment(comment: dict, issue: dict, target: dict, ctx: Context,
                 r["commit"] = args[0]
             r = rec.with_id(r)
             out.records.append(r)
-            label = {"withdrawn": "withdrawn", "fixed": "fixed", "intended": "intended as it is",
-                     "invalid": "invalid", "answered": "answered", "reopened": "reopened"}[state]
-            out.replies.append((n, f"Recorded: `{target['id']}` is now **{label}**"
+            out.replies.append((n, f"Recorded: `{target['id']}` is now **{LABEL_OF[state]}**"
                                    + (f" (`{args[0]}`)" if args else "") + f", by {rec.who(by)}."))
-            if state == "reopened":
-                out.reopen.append(n)
-                out.labels.append((n, ["evidence:open"], []))
-            else:
-                out.labels.append((n, [], ["evidence:open"]))
-                out.close.append((n, "completed" if state in ("fixed", "answered") else "not planned"))
+            on_target_issue(out, n, state)
             return out
         if announce:
             out.replies.append((n, f"Not recorded as a status: {refusal}. The comment is kept as a reply."))

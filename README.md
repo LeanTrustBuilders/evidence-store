@@ -18,6 +18,7 @@ evidence-store init --repo OWNER/NAME --root MyLib --labels     # in the reposit
 | `evidence/store.json` | the store: the library it is about, where its datasets are, its claims and maintainers |
 | `evidence/records/*.jsonl` | the records, one file per month, append-only |
 | `.github/ISSUE_TEMPLATE/evidence-{review,problem,question}.yml` | three issue forms: review a declaration (with what was checked, the reference compared with, caveats), report a problem (with its failure mode), ask a question |
+| `.github/ISSUE_TEMPLATE/evidence-status.yml` | a fourth form, which changes a record's state (the same changes as the commands below): what a page's "Withdraw", "Mark fixed" or "Reopen" buttons open, prefilled |
 | `.github/workflows/evidence-intake.yml` | intake: turns those issues and their comments into records |
 | `.github/workflows/evidence-check.yml` | checks every change to the store |
 
@@ -44,6 +45,9 @@ to key each record by the reviewed declaration's hashes (S1): by default, a rele
 
   Anything after the command is kept as a note. Any other comment is recorded as a reply: the
   discussion, and the answers to questions.
+- **An issue opened with the status form** asks for one of those changes to a record named by its id,
+  under the same rules. The bot records it, closes the form's issue, and says and does the change on
+  the record's own issue too. This is what lets a static page offer the changes as buttons.
 - **Maintainers** are the repository's owners, members and collaborators, and the logins listed in
   `store.json`.
 

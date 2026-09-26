@@ -2,8 +2,10 @@
 for the issues they produce, and the body an agent writes to submit the same thing.
 
 Three forms, one per verdict of a review (S3): **review** (an acceptance, with what was checked, the
-reference and caveats), **problem** (with its failure mode) and **question**. Each labels its issue
-(`evidence:review`, …), which is how intake knows what an issue is.
+reference and caveats), **problem** (with its failure mode) and **question**; and a fourth,
+**status**, which changes the state of a record: withdraw a review, mark a problem fixed, intended or
+not a problem, mark a question answered, reopen. Each labels its issue (`evidence:review`, …), which
+is how intake knows what an issue is.
 
 GitHub writes a form's answers into the issue body as ``### <label>`` sections, in form order, with
 ``_No response_`` for an empty field and ``- [X] …`` / ``- [ ] …`` for checkboxes. ``parse`` reads
@@ -102,6 +104,25 @@ FORMS = {
             DECL, COMMIT,
             {"id": "question", "type": "textarea", "label": "Question", "required": True},
             INVOLVED, WHO_FIELD, AGENT,
+        ],
+    },
+    "status": {
+        "file": "evidence-status.yml", "label": "evidence:status", "title": "Status: ",
+        "name": "Change the state of a review",
+        "description": "Withdraw your review; mark a problem fixed, intended or not a problem; mark a question answered; reopen.",
+        "intro": "Usually opened from the buttons under a review, with its id filled in. It is recorded if your "
+                 "account may make the change: the author of a review can withdraw it; the reporter of a problem, "
+                 "the asker of a question, and the maintainers can resolve or reopen it. The same changes can be "
+                 "made by commenting on the review's own issue (`/withdraw`, `/fixed <commit>`, …).",
+        "fields": [
+            {"id": "record", "type": "input", "label": "Record", "required": True,
+             "description": "The id of the review, problem or question: 16 hexadecimal digits."},
+            {"id": "action", "type": "input", "label": "Change", "required": True,
+             "description": "One of: withdraw, fixed, intended, invalid, answered, reopen."},
+            {"id": "commit", "type": "input", "label": "Fixed in",
+             "description": "For `fixed`: the commit that fixed it."},
+            {"id": "note", "type": "textarea", "label": "Note"},
+            WHO_FIELD, AGENT,
         ],
     },
 }
