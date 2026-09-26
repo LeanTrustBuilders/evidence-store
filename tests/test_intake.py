@@ -366,6 +366,28 @@ class CliTests(unittest.TestCase):
                              ("agent", "Claude Code, claude-opus-5-5", True, False))
 
 
+class AddCommandTests(unittest.TestCase):
+    def test_a_readers_export_gets_its_ids_in_the_store(self):
+        from evidence_core import records as rec
+        ds = Dataset.load(Path(__file__).parent / "vectors" / "fixture-b")
+        d = next(x for x in ds.decls if x.is_project)
+        r = {"schema": rec.SCHEMA, "kind": "review", "subject": rec.subject_from_decl(d, ds), "verdict": "accept",
+             "by": {"kind": "person", "identity": {"kind": "github", "id": "alice"}}, "at": "2026-09-26T10:00:00Z",
+             "origin": {"kind": "site", "ref": "https://example.org/site/"}}
+        with tempfile.TemporaryDirectory() as tmp:
+            store = Path(tmp) / "evidence"
+            sto.Store.init(store, sto.default_config("o/lib", "Lib"))
+            f = Path(tmp) / "audit.jsonl"
+            f.write_text(json.dumps(r) + "\n")
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                self.assertEqual(cli(["add", str(f), "--store", str(store)]), 0)
+                self.assertEqual(cli(["add", str(f), "--store", str(store)]), 0)
+            self.assertIn("0 records added", buf.getvalue())
+            [stored] = sto.Store.load(store).records
+            self.assertEqual(stored["id"], rec.record_id(stored))
+
+
 class DatasetCommandTests(unittest.TestCase):
     """`evidence-store dataset`: which release it fetches, and where it puts it (gh is replaced)."""
 

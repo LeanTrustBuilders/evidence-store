@@ -176,6 +176,20 @@ def cmd_check(args) -> int:
     return 1 if errs else 0
 
 
+def cmd_add(args) -> int:
+    """Adds the records of a file (a reader's export, say) to a store, as a pull request would: each
+    checked and given its id; records the store has are skipped."""
+    store = sto.Store.load(args.store)
+    records = rec.load(args.file)
+    try:
+        added = store.add(records)
+    except sto.StoreError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    print(f"{len(added)} records added to {args.store}, {len(records) - len(added)} already there")
+    return 0
+
+
 def cmd_dataset(args) -> int:
     """Fetches datasets published as releases: where a store's config says (``store.json``,
     ``datasets``), or where ``--repo``/``--tag`` say for a repository without a store."""
@@ -316,6 +330,11 @@ def main(argv: list[str] | None = None) -> int:
     q.add_argument("--repo", required=True)
     q.add_argument("--outcome", required=True)
     q.set_defaults(fn=cmd_apply)
+
+    q = sub.add_parser("add", help="add the records of a file to the store (for a pull request)")
+    q.add_argument("file", help="records, one JSON object per line (ids are set here)")
+    q.add_argument("--store", default="evidence")
+    q.set_defaults(fn=cmd_add)
 
     q = sub.add_parser("dataset", help="fetch the dataset of a commit (or every one) from its release")
     q.add_argument("--store", default="evidence", help="the store whose config says where datasets are")
