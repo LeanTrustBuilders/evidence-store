@@ -248,6 +248,11 @@ class CliTests(unittest.TestCase):
                      "--dry-run"])
             title, body = buf.getvalue().split("\n\n", 1)
             self.assertEqual(title, "Review: " + F + "double")
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                cli(["status", "--repo", REPO, "--record", "0123456789abcdef", "--action", "withdraw", "--dry-run"])
+            st = forms.parse("status", buf.getvalue().split("\n\n", 1)[1])
+            self.assertEqual((st["record"], st["action"], st["who"]), ("0123456789abcdef", "withdraw", "person"))
             a = forms.parse("review", body)
             self.assertEqual((a["who"], a["agent"], a["checked"]["F2"], a["checked"]["F3"]),
                              ("agent", "Claude Code, claude-opus-5-5", True, False))

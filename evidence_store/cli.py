@@ -6,6 +6,7 @@
   evidence-store check   [--base REV] [--author LOGIN]
   evidence-store submit  --repo OWNER/NAME --decl NAME --verdict accept|problem|question --agent "TOOL, MODEL" …
   evidence-store comment --repo OWNER/NAME --issue N --text TEXT [--agent "TOOL, MODEL"]
+  evidence-store status  --repo OWNER/NAME --record ID --action withdraw|fixed|… [--commit C] [--note T]
 
 `init` sets a repository up: the store's directory, the issue forms, and the workflows that run
 intake and check changes. `intake` and `apply` are what the intake workflow runs. `submit` and
@@ -196,6 +197,19 @@ def cmd_submit(args) -> int:
     return 0
 
 
+def cmd_status(args) -> int:
+    answers = {"record": args.record, "action": args.action, "commit": args.commit, "note": args.note,
+               "who": "agent" if args.agent else "person", "agent": args.agent}
+    text = forms.body("status", answers)
+    title = f"Status: {args.action} {args.record}"
+    if args.dry_run:
+        print(f"{title}\n\n{text}")
+        return 0
+    from . import github
+    print(github.create_issue(args.repo, title, text, forms.FORMS["status"]["label"]))
+    return 0
+
+
 def cmd_comment(args) -> int:
     text = args.text + (f"\n\n{agent_mark(args.agent)}" if args.agent else "")
     if args.dry_run:
@@ -259,6 +273,16 @@ def main(argv: list[str] | None = None) -> int:
     q.add_argument("--agent", default="", help="'TOOL, MODEL[, session S]': an AI agent wrote it")
     q.add_argument("--dry-run", action="store_true", help="print the issue instead of opening it")
     q.set_defaults(fn=cmd_submit)
+
+    q = sub.add_parser("status", help="change a record's state, as the status form does")
+    q.add_argument("--repo", required=True)
+    q.add_argument("--record", required=True, help="the id of the review, problem or question")
+    q.add_argument("--action", required=True, choices=["withdraw", "fixed", "intended", "invalid", "answered", "reopen"])
+    q.add_argument("--commit", default="", help="for fixed: the commit that fixed it")
+    q.add_argument("--note", default="")
+    q.add_argument("--agent", default="", help="'TOOL, MODEL[, session S]': an AI agent asks for it")
+    q.add_argument("--dry-run", action="store_true")
+    q.set_defaults(fn=cmd_status)
 
     q = sub.add_parser("comment", help="comment on a review, problem or question")
     q.add_argument("--repo", required=True)

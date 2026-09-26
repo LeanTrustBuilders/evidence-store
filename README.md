@@ -72,6 +72,7 @@ evidence-store submit --repo OWNER/NAME --decl MyLib.foo --verdict accept \
   --agent "Claude Code, claude-opus-5-5"
 evidence-store submit --repo OWNER/NAME --decl MyLib.foo --verdict problem --category F3 --rationale "…" --agent "…"
 evidence-store comment --repo OWNER/NAME --issue 12 --text "It is 0: by rfl." --agent "Claude Code, claude-opus-5-5"
+evidence-store status  --repo OWNER/NAME --record 41fe3cfb8d7af478 --action withdraw --agent "Claude Code, claude-opus-5-5"
 ```
 
 ## Pull requests
@@ -90,6 +91,7 @@ evidence-store apply   --repo OWNER/NAME --outcome FILE
 evidence-store check   [--base REV] [--author LOGIN]
 evidence-store submit  --repo OWNER/NAME --decl NAME --verdict accept|problem|question …
 evidence-store comment --repo OWNER/NAME --issue N --text TEXT [--agent "TOOL, MODEL"]
+evidence-store status  --repo OWNER/NAME --record ID --action withdraw|fixed|intended|invalid|answered|reopen …
 ```
 
 The composite actions `LeanTrustBuilders/evidence-store/intake` and `…/check` are what the generated
