@@ -51,10 +51,11 @@ class FormTests(unittest.TestCase):
         self.assertEqual(forms.parse("review", forms.body("review", answers)), answers)
 
     def test_what_github_writes(self):
-        # An issue body as GitHub writes it from the web form: unanswered fields and checkboxes.
+        # An issue body as GitHub writes it from the web form: unanswered fields and checkboxes, ticked
+        # ones as `[x]` (from a real submission).
         body = ("### Declaration\n\nFixture.double\n\n### Commit\n\n_No response_\n\n"
                 "### Compared with\n\n_No response_\n\n### What you checked\n\n"
-                "- [X] F1: the intended object, not a different notion\n- [ ] F2: its conventions: normalization, indexing, signs\n\n"
+                "- [x] F1: the intended object, not a different notion\n- [ ] F2: its conventions: normalization, indexing, signs\n\n"
                 "### Caveats\n\n_No response_\n\n### Why\n\nIt doubles.\n\n### You are\n\nan outsider to this library\n\n"
                 "### Written by\n\nme, a person\n\n### Agent\n\n_No response_\n")
         self.assertEqual(forms.parse("review", body),
