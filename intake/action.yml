@@ -24,30 +24,37 @@ runs:
     - name: evidence-store
       shell: bash
       run: pip install -q "git+https://github.com/LeanTrustBuilders/evidence-store@${{ inputs.ref }}"
-    - name: Read issues and comments
+    - name: Read issues and comments, and commit the records
+      id: push
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
+        BRANCH: ${{ github.event.repository.default_branch || github.ref_name }}
       run: |
-        evidence-store intake --repo "$GITHUB_REPOSITORY" --store "${{ inputs.store }}" \
-          --event "$GITHUB_EVENT_PATH" --event-name "$GITHUB_EVENT_NAME" \
-          --sweep-days "${{ inputs.sweep-days }}" --outcome "$RUNNER_TEMP/outcome.json"
-    - name: Commit the records
-      id: push
-      shell: bash
-      run: |
-        if [ -n "$(git status --porcelain -- "${{ inputs.store }}")" ]; then
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        # An event's checkout is the branch as it was when the event fired, which can be before the
+        # records of the previous run. So: start from the branch's tip, read, commit, push; and if
+        # someone pushed in between, do it all again. Intake is idempotent, so a second reading only
+        # adds what the store still lacks.
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        for attempt in 1 2 3 4 5; do
+          git fetch -q origin "$BRANCH"
+          git checkout -q -B "$BRANCH" "origin/$BRANCH"
+          evidence-store intake --repo "$GITHUB_REPOSITORY" --store "${{ inputs.store }}" \
+            --event "$GITHUB_EVENT_PATH" --event-name "$GITHUB_EVENT_NAME" \
+            --sweep-days "${{ inputs.sweep-days }}" --outcome "$RUNNER_TEMP/outcome.json"
+          if [ -z "$(git status --porcelain -- "${{ inputs.store }}")" ]; then
+            exit 0
+          fi
           git add -- "${{ inputs.store }}"
           git commit -qm "evidence: $(jq '.records | length' "$RUNNER_TEMP/outcome.json") records from issues"
-          for attempt in 1 2 3 4 5; do
-            git pull -q --rebase && git push -q && break
-            [ "$attempt" = 5 ] && exit 1
-            sleep $((attempt * 3))
-          done
-          echo "pushed=true" >> "$GITHUB_OUTPUT"
-        fi
+          if git push -q origin "$BRANCH"; then
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          sleep $((attempt * 3))
+        done
+        exit 1
     - name: Reply on the issues
       shell: bash
       env:
@@ -58,4 +65,4 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
-      run: gh workflow run "${{ inputs.pages-workflow }}" -R "$GITHUB_REPOSITORY" --ref "$(git rev-parse --abbrev-ref HEAD)"
+      run: gh workflow run "${{ inputs.pages-workflow }}" -R "$GITHUB_REPOSITORY" --ref "${{ github.event.repository.default_branch || github.ref_name }}"
