@@ -1,6 +1,6 @@
 {"toolchain": "leanprover/lean4:v4.35.0-rc2",
  "spec": "ltb-dataset/2",
- "producer": {"version": "0.11.0", "parts": 1, "name": "trust-extract"},
+ "producer": {"version": "0.12.0", "parts": 1, "name": "trust-extract"},
  "packages":
  [{"requires": ["TrustAnnotations", "lean4"], "name": "Fixture", "modules": 4},
   {"requires": ["lean4"], "name": "TrustAnnotations", "modules": 6},
@@ -18,7 +18,7 @@
   "githash": "11acb17ec6b07a8f9e9173e6845197929540936b"},
  "hasher":
  {"meaning": "ltb-meaning/1",
-  "local": "ltb-local/2",
+  "local": "ltb-local/3",
   "content": "ltb-content/1"},
  "facets":
  [{"schema": "docstring/1",
@@ -26,7 +26,7 @@
    "file": "facets/docstring.jsonl",
    "description":
    "the declaration's docstring, verbatim (project nodes, and upstream nodes unless the extractor ran with --no-upstream-docs)",
-   "count": 28},
+   "count": 55},
   {"schema": "source/1",
    "name": "source",
    "file": "facets/source.jsonl",
@@ -80,7 +80,7 @@
    "file": "facets/signature.jsonl",
    "description":
    "every node's signature as Lean prints it (`name (x : α) … : β`), for hovers; with `refs`, as in the statement facet",
-   "count": 40},
+   "count": 111},
   {"schema": "statement/1",
    "name": "statement",
    "file": "facets/statement.jsonl",
@@ -105,11 +105,11 @@
    "file": "edges/term.bin",
    "description":
    "the type and the whole value, proofs included, restricted to targets that are nodes",
-   "count": 163},
+   "count": 448},
   {"name": "source",
    "format": "i32le-pairs",
    "file": "edges/source.bin",
    "description":
    "what the declaration's source needs that its elaborated term does not mention: the coercion instances it relies on, and for a notation what it expands to",
    "count": 1}],
- "counts": {"upstream": 19, "project": 21, "nodes": 40}}
+ "counts": {"upstream": 90, "project": 21, "nodes": 111}}

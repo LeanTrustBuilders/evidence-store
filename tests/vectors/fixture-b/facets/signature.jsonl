@@ -19,22 +19,93 @@
 {"decl":"Fixture.IsDouble.unique","refs":[[33,36,"Nat"],[44,60,"Fixture.IsDouble"],[72,88,"Fixture.IsDouble"],[100,101,"Eq"]],"text":"Fixture.IsDouble.unique {n a b : Nat} (ha : Fixture.IsDouble n a) (hb : Fixture.IsDouble n b) :\n  a = b"}
 {"decl":"Fixture.double_triple","refs":[[27,30,"Nat"],[34,35,"Fixture.double"],[37,38,"HAdd.hAdd"],[41,42,"Eq"],[43,57,"Fixture.triple"]],"text":"Fixture.double_triple (n : Nat) : 𝟚n + n = Fixture.triple n"}
 {"decl":"Fixture.isDouble_double","refs":[[29,32,"Nat"],[36,52,"Fixture.IsDouble"],[56,57,"Fixture.double"]],"text":"Fixture.isDouble_double (n : Nat) : Fixture.IsDouble n (𝟚n)"}
+{"decl":"Bool","refs":[],"text":"Bool : Type"}
+{"decl":"Decidable","refs":[],"text":"Decidable (p : Prop) : Type"}
+{"decl":"Decidable.byContradiction","refs":[[44,53,"Decidable"],[62,63,"Not"],[67,72,"False"]],"text":"Decidable.byContradiction {p : Prop} [dec : Decidable p] (h : ¬p → False) : p"}
 {"decl":"Eq","refs":[],"text":"Eq.{u_1} {α : Sort u_1} : α → α → Prop"}
+{"decl":"Eq.symm","refs":[[42,43,"Eq"],[51,52,"Eq"]],"text":"Eq.symm.{u} {α : Sort u} {a b : α} (h : a = b) : b = a"}
+{"decl":"Eq.trans","refs":[[46,47,"Eq"],[59,60,"Eq"],[68,69,"Eq"]],"text":"Eq.trans.{u} {α : Sort u} {a b c : α} (h₁ : a = b) (h₂ : b = c) : a = c"}
+{"decl":"False","refs":[],"text":"False : Prop"}
+{"decl":"GT.gt","refs":[[24,26,"LT"]],"text":"GT.gt.{u} {α : Type u} [LT α] (a b : α) : Prop"}
 {"decl":"HAdd","refs":[[46,54,"outParam"]],"text":"HAdd.{u, v, w} (α : Type u) (β : Type v) (γ : outParam (Type w)) : Type (max (max u v) w)"}
 {"decl":"HMul","refs":[[46,54,"outParam"]],"text":"HMul.{u, v, w} (α : Type u) (β : Type v) (γ : outParam (Type w)) : Type (max (max u v) w)"}
+{"decl":"HSub","refs":[[46,54,"outParam"]],"text":"HSub.{u, v, w} (α : Type u) (β : Type v) (γ : outParam (Type w)) : Type (max (max u v) w)"}
 {"decl":"Inhabited","refs":[],"text":"Inhabited.{u} (α : Sort u) : Sort (max 1 u)"}
+{"decl":"Int","refs":[],"text":"Int : Type"}
+{"decl":"Int.add_one_le_of_lt","refs":[[28,31,"Int"],[40,41,"LT.lt"],[49,50,"HAdd.hAdd"],[53,54,"LE.le"]],"text":"Int.add_one_le_of_lt {a b : Int} (H : a < b) : a + 1 ≤ b"}
+{"decl":"Int.instAdd","refs":[[14,17,"Add"],[18,21,"Int"]],"text":"Int.instAdd : Add Int"}
+{"decl":"Int.instDecidableEq","refs":[[22,33,"DecidableEq"],[34,37,"Int"]],"text":"Int.instDecidableEq : DecidableEq Int"}
+{"decl":"Int.instLEInt","refs":[[16,18,"LE"],[19,22,"Int"]],"text":"Int.instLEInt : LE Int"}
+{"decl":"Int.instMul","refs":[[14,17,"Mul"],[18,21,"Int"]],"text":"Int.instMul : Mul Int"}
+{"decl":"Int.instNegInt","refs":[[17,20,"Neg"],[21,24,"Int"]],"text":"Int.instNegInt : Neg Int"}
+{"decl":"Int.instSub","refs":[[14,17,"Sub"],[18,21,"Int"]],"text":"Int.instSub : Sub Int"}
+{"decl":"Int.natCast_add","refs":[[23,26,"Nat"],[34,35,"HAdd.hAdd"],[39,40,"Eq"],[44,45,"HAdd.hAdd"]],"text":"Int.natCast_add (n m : Nat) : ↑(n + m) = ↑n + ↑m"}
+{"decl":"Int.natCast_mul","refs":[[23,26,"Nat"],[34,35,"HMul.hMul"],[39,40,"Eq"],[44,45,"HMul.hMul"]],"text":"Int.natCast_mul (n m : Nat) : ↑(n * m) = ↑n * ↑m"}
+{"decl":"Int.sub_eq_zero_of_eq","refs":[[29,32,"Int"],[41,42,"Eq"],[50,51,"HSub.hSub"],[54,55,"Eq"]],"text":"Int.sub_eq_zero_of_eq {a b : Int} (h : a = b) : a - b = 0"}
+{"decl":"Int.sub_nonneg_of_le","refs":[[28,31,"Int"],[40,41,"LE.le"],[49,50,"LE.le"],[53,54,"HSub.hSub"]],"text":"Int.sub_nonneg_of_le {a b : Int} (h : b ≤ a) : 0 ≤ a - b"}
 {"decl":"LT","refs":[],"text":"LT.{u} (α : Type u) : Type u"}
 {"decl":"Lean.Name.mkStr1","refs":[[23,29,"String"],[33,42,"Lean.Name"]],"text":"Lean.Name.mkStr1 (s₁ : String) : Lean.Name"}
 {"decl":"Lean.Name.mkStr2","refs":[[26,32,"String"],[36,45,"Lean.Name"]],"text":"Lean.Name.mkStr2 (s₁ s₂ : String) : Lean.Name"}
+{"decl":"Lean.Omega.Coeffs.isZero","refs":[[31,48,"Lean.Omega.Coeffs"]],"text":"Lean.Omega.Coeffs.isZero (xs : Lean.Omega.Coeffs) : Prop"}
+{"decl":"Lean.Omega.Coeffs.ofList","refs":[[31,35,"List"],[36,39,"Int"],[43,60,"Lean.Omega.Coeffs"]],"text":"Lean.Omega.Coeffs.ofList (xs : List Int) : Lean.Omega.Coeffs"}
+{"decl":"Lean.Omega.Constraint","refs":[],"text":"Lean.Omega.Constraint : Type"}
+{"decl":"Lean.Omega.Constraint.addEquality_sat","refs":[[43,46,"Int"],[55,72,"Lean.Omega.Coeffs"],[81,82,"HAdd.hAdd"],[85,88,"Lean.Omega.Coeffs.dot"],[91,92,"Eq"],[116,120,"Option.some"],[122,123,"Neg.neg"],[141,145,"Option.some"],[147,148,"Neg.neg"],[153,157,"Lean.Omega.Constraint.sat'"],[162,163,"Eq"],[164,168,"Bool.true"]],"text":"Lean.Omega.Constraint.addEquality_sat {c : Int} {x y : Lean.Omega.Coeffs} (w : c + x.dot y = 0) :\n  { lowerBound := some (-c), upperBound := some (-c) }.sat' x y = true"}
+{"decl":"Lean.Omega.Constraint.addInequality_sat","refs":[[45,48,"Int"],[57,74,"Lean.Omega.Coeffs"],[83,84,"HAdd.hAdd"],[87,90,"Lean.Omega.Coeffs.dot"],[93,94,"GE.ge"],[118,122,"Option.some"],[124,125,"Neg.neg"],[143,147,"Option.none"],[150,154,"Lean.Omega.Constraint.sat'"],[159,160,"Eq"],[161,165,"Bool.true"]],"text":"Lean.Omega.Constraint.addInequality_sat {c : Int} {x y : Lean.Omega.Coeffs} (w : c + x.dot y ≥ 0) :\n  { lowerBound := some (-c), upperBound := none }.sat' x y = true"}
+{"decl":"Lean.Omega.Constraint.combine_sat'","refs":[[42,63,"Lean.Omega.Constraint"],[72,89,"Lean.Omega.Coeffs"],[101,105,"Lean.Omega.Constraint.sat'"],[110,111,"Eq"],[112,116,"Bool.true"],[126,130,"Lean.Omega.Constraint.sat'"],[135,136,"Eq"],[137,141,"Bool.true"],[148,155,"Lean.Omega.Constraint.combine"],[159,163,"Lean.Omega.Constraint.sat'"],[168,169,"Eq"],[170,174,"Bool.true"]],"text":"Lean.Omega.Constraint.combine_sat' {s t : Lean.Omega.Constraint} {x y : Lean.Omega.Coeffs}\n  (ws : s.sat' x y = true) (wt : t.sat' x y = true) : (s.combine t).sat' x y = true"}
+{"decl":"Lean.Omega.Constraint.isImpossible","refs":[[37,58,"Lean.Omega.Constraint"],[61,65,"Bool"]],"text":"Lean.Omega.Constraint.isImpossible : Lean.Omega.Constraint → Bool"}
+{"decl":"Lean.Omega.Constraint.not_sat'_of_isImpossible","refs":[[52,73,"Lean.Omega.Constraint"],[84,96,"Lean.Omega.Constraint.isImpossible"],[97,98,"Eq"],[99,103,"Bool.true"],[112,129,"Lean.Omega.Coeffs"],[133,134,"Not"],[136,140,"Lean.Omega.Constraint.sat'"],[145,146,"Eq"],[147,151,"Bool.true"]],"text":"Lean.Omega.Constraint.not_sat'_of_isImpossible {c : Lean.Omega.Constraint}\n  (h : c.isImpossible = true) {x y : Lean.Omega.Coeffs} : ¬c.sat' x y = true"}
+{"decl":"Lean.Omega.Int.add_congr","refs":[[36,39,"Int"],[49,50,"Eq"],[62,63,"Eq"],[71,72,"HAdd.hAdd"],[75,76,"Eq"],[79,80,"HAdd.hAdd"]],"text":"Lean.Omega.Int.add_congr {a b c d : Int} (h₁ : a = b) (h₂ : c = d) : a + c = b + d"}
+{"decl":"Lean.Omega.Int.mul_congr","refs":[[36,39,"Int"],[49,50,"Eq"],[62,63,"Eq"],[71,72,"HMul.hMul"],[75,76,"Eq"],[79,80,"HMul.hMul"]],"text":"Lean.Omega.Int.mul_congr {a b c d : Int} (h₁ : a = b) (h₂ : c = d) : a * c = b * d"}
+{"decl":"Lean.Omega.Int.ofNat_congr","refs":[[34,37,"Nat"],[46,47,"Eq"],[56,57,"Eq"]],"text":"Lean.Omega.Int.ofNat_congr {a b : Nat} (h : a = b) : ↑a = ↑b"}
+{"decl":"Lean.Omega.Int.ofNat_le_of_le","refs":[[37,40,"Nat"],[49,50,"LE.le"],[59,60,"LE.le"]],"text":"Lean.Omega.Int.ofNat_le_of_le {x y : Nat} (h : x ≤ y) : ↑x ≤ ↑y"}
+{"decl":"Lean.Omega.Int.ofNat_lt_of_lt","refs":[[37,40,"Nat"],[49,50,"LT.lt"],[59,60,"LT.lt"]],"text":"Lean.Omega.Int.ofNat_lt_of_lt {x y : Nat} (h : x < y) : ↑x < ↑y"}
+{"decl":"Lean.Omega.Int.sub_congr","refs":[[36,39,"Int"],[49,50,"Eq"],[62,63,"Eq"],[71,72,"HSub.hSub"],[75,76,"Eq"],[79,80,"HSub.hSub"]],"text":"Lean.Omega.Int.sub_congr {a b c d : Int} (h₁ : a = b) (h₂ : c = d) : a - c = b - d"}
+{"decl":"Lean.Omega.LinearCombo","refs":[],"text":"Lean.Omega.LinearCombo : Type"}
+{"decl":"Lean.Omega.LinearCombo.add_eval","refs":[[41,63,"Lean.Omega.LinearCombo"],[70,87,"Lean.Omega.Coeffs"],[97,98,"HAdd.hAdd"],[103,107,"Lean.Omega.LinearCombo.eval"],[110,111,"Eq"],[115,119,"Lean.Omega.LinearCombo.eval"],[122,123,"HAdd.hAdd"],[127,131,"Lean.Omega.LinearCombo.eval"]],"text":"Lean.Omega.LinearCombo.add_eval (l₁ l₂ : Lean.Omega.LinearCombo) (v : Lean.Omega.Coeffs) :\n  (l₁ + l₂).eval v = l₁.eval v + l₂.eval v"}
+{"decl":"Lean.Omega.LinearCombo.coordinate","refs":[[39,42,"Nat"],[46,68,"Lean.Omega.LinearCombo"]],"text":"Lean.Omega.LinearCombo.coordinate (i : Nat) : Lean.Omega.LinearCombo"}
+{"decl":"Lean.Omega.LinearCombo.coordinate_eval_0","refs":[[47,50,"Int"],[57,61,"List"],[62,65,"Int"],[72,105,"Lean.Omega.LinearCombo.coordinate"],[109,113,"Lean.Omega.LinearCombo.eval"],[115,139,"Lean.Omega.Coeffs.ofList"],[144,146,"List.cons"],[151,152,"Eq"]],"text":"Lean.Omega.LinearCombo.coordinate_eval_0 {a0 : Int} {t : List Int} :\n  (Lean.Omega.LinearCombo.coordinate 0).eval (Lean.Omega.Coeffs.ofList (a0 :: t)) = a0"}
+{"decl":"Lean.Omega.LinearCombo.coordinate_eval_1","refs":[[50,53,"Int"],[60,64,"List"],[65,68,"Int"],[75,108,"Lean.Omega.LinearCombo.coordinate"],[112,116,"Lean.Omega.LinearCombo.eval"],[118,142,"Lean.Omega.Coeffs.ofList"],[147,149,"List.cons"],[153,155,"List.cons"],[160,161,"Eq"]],"text":"Lean.Omega.LinearCombo.coordinate_eval_1 {a0 a1 : Int} {t : List Int} :\n  (Lean.Omega.LinearCombo.coordinate 1).eval (Lean.Omega.Coeffs.ofList (a0 :: a1 :: t)) = a1"}
+{"decl":"Lean.Omega.LinearCombo.coordinate_eval_2","refs":[[53,56,"Int"],[63,67,"List"],[68,71,"Int"],[78,111,"Lean.Omega.LinearCombo.coordinate"],[115,119,"Lean.Omega.LinearCombo.eval"],[121,145,"Lean.Omega.Coeffs.ofList"],[150,152,"List.cons"],[156,158,"List.cons"],[162,164,"List.cons"],[169,170,"Eq"]],"text":"Lean.Omega.LinearCombo.coordinate_eval_2 {a0 a1 a2 : Int} {t : List Int} :\n  (Lean.Omega.LinearCombo.coordinate 2).eval (Lean.Omega.Coeffs.ofList (a0 :: a1 :: a2 :: t)) = a2"}
+{"decl":"Lean.Omega.LinearCombo.eval","refs":[[34,56,"Lean.Omega.LinearCombo"],[68,85,"Lean.Omega.Coeffs"],[89,92,"Int"]],"text":"Lean.Omega.LinearCombo.eval (lc : Lean.Omega.LinearCombo) (values : Lean.Omega.Coeffs) : Int"}
+{"decl":"Lean.Omega.LinearCombo.instAdd","refs":[[33,36,"Add"],[37,59,"Lean.Omega.LinearCombo"]],"text":"Lean.Omega.LinearCombo.instAdd : Add Lean.Omega.LinearCombo"}
+{"decl":"Lean.Omega.LinearCombo.instSub","refs":[[33,36,"Sub"],[37,59,"Lean.Omega.LinearCombo"]],"text":"Lean.Omega.LinearCombo.instSub : Sub Lean.Omega.LinearCombo"}
+{"decl":"Lean.Omega.LinearCombo.mul","refs":[[36,58,"Lean.Omega.LinearCombo"],[62,84,"Lean.Omega.LinearCombo"]],"text":"Lean.Omega.LinearCombo.mul (l₁ l₂ : Lean.Omega.LinearCombo) : Lean.Omega.LinearCombo"}
+{"decl":"Lean.Omega.LinearCombo.mul_eval","refs":[[41,63,"Lean.Omega.LinearCombo"],[70,87,"Lean.Omega.Coeffs"],[99,105,"Lean.Omega.LinearCombo.coeffs"],[106,112,"Lean.Omega.Coeffs.isZero"],[113,114,"Or"],[118,124,"Lean.Omega.LinearCombo.coeffs"],[125,131,"Lean.Omega.Coeffs.isZero"],[139,142,"Lean.Omega.LinearCombo.mul"],[147,151,"Lean.Omega.LinearCombo.eval"],[154,155,"Eq"],[159,163,"Lean.Omega.LinearCombo.eval"],[166,167,"HMul.hMul"],[171,175,"Lean.Omega.LinearCombo.eval"]],"text":"Lean.Omega.LinearCombo.mul_eval (l₁ l₂ : Lean.Omega.LinearCombo) (v : Lean.Omega.Coeffs)\n  (w : l₁.coeffs.isZero ∨ l₂.coeffs.isZero) : (l₁.mul l₂).eval v = l₁.eval v * l₂.eval v"}
+{"decl":"Lean.Omega.LinearCombo.sub_eval","refs":[[41,63,"Lean.Omega.LinearCombo"],[70,87,"Lean.Omega.Coeffs"],[97,98,"HSub.hSub"],[103,107,"Lean.Omega.LinearCombo.eval"],[110,111,"Eq"],[115,119,"Lean.Omega.LinearCombo.eval"],[122,123,"HSub.hSub"],[127,131,"Lean.Omega.LinearCombo.eval"]],"text":"Lean.Omega.LinearCombo.sub_eval (l₁ l₂ : Lean.Omega.LinearCombo) (v : Lean.Omega.Coeffs) :\n  (l₁ - l₂).eval v = l₁.eval v - l₂.eval v"}
+{"decl":"Lean.Omega.combo_sat'","refs":[[29,50,"Lean.Omega.Constraint"],[57,60,"Int"],[67,84,"Lean.Omega.Coeffs"],[91,94,"Int"],[105,122,"Lean.Omega.Coeffs"],[132,136,"Lean.Omega.Constraint.sat'"],[141,142,"Eq"],[143,147,"Bool.true"],[157,161,"Lean.Omega.Constraint.sat'"],[166,167,"Eq"],[168,172,"Bool.true"],[179,206,"Lean.Omega.Constraint.combo"],[216,220,"Lean.Omega.Constraint.sat'"],[222,245,"Lean.Omega.Coeffs.combo"],[257,258,"Eq"],[259,263,"Bool.true"]],"text":"Lean.Omega.combo_sat' (s t : Lean.Omega.Constraint) (a : Int) (x : Lean.Omega.Coeffs) (b : Int)\n  (y v : Lean.Omega.Coeffs) (wx : s.sat' x v = true) (wy : t.sat' y v = true) :\n  (Lean.Omega.Constraint.combo a s b t).sat' (Lean.Omega.Coeffs.combo a x b y) v = true"}
+{"decl":"Lean.Omega.tidy_sat","refs":[[25,46,"Lean.Omega.Constraint"],[55,72,"Lean.Omega.Coeffs"],[81,85,"Lean.Omega.Constraint.sat'"],[90,91,"Eq"],[92,96,"Bool.true"],[103,128,"Lean.Omega.tidyConstraint"],[134,138,"Lean.Omega.Constraint.sat'"],[140,161,"Lean.Omega.tidyCoeffs"],[169,170,"Eq"],[171,175,"Bool.true"]],"text":"Lean.Omega.tidy_sat {s : Lean.Omega.Constraint} {x v : Lean.Omega.Coeffs} (w : s.sat' x v = true) :\n  (Lean.Omega.tidyConstraint s x).sat' (Lean.Omega.tidyCoeffs s x) v = true"}
 {"decl":"Lean.ParserDescr","refs":[],"text":"Lean.ParserDescr : Type"}
+{"decl":"List","refs":[],"text":"List.{u} (α : Type u) : Type u"}
+{"decl":"List.decidableBAll","refs":[[52,65,"DecidablePred"],[74,78,"List"],[86,95,"Decidable"],[110,111,"Membership.mem"]],"text":"List.decidableBAll.{u} {α : Type u} (p : α → Prop) [DecidablePred p] (l : List α) :\n  Decidable (∀ (x : α), x ∈ l → p x)"}
 {"decl":"Nat","refs":[],"text":"Nat : Type"}
+{"decl":"Nat.cast","refs":[[27,34,"NatCast"],[40,43,"Nat"]],"text":"Nat.cast.{u} {R : Type u} [NatCast R] : Nat → R"}
+{"decl":"Nat.decLt","refs":[[17,20,"Nat"],[24,33,"Decidable"],[37,38,"LT.lt"]],"text":"Nat.decLt (n m : Nat) : Decidable (n < m)"}
+{"decl":"Nat.le_of_not_lt","refs":[[24,27,"Nat"],[31,32,"Not"],[34,35,"LT.lt"],[42,43,"LE.le"]],"text":"Nat.le_of_not_lt {a b : Nat} : ¬a < b → b ≤ a"}
+{"decl":"Nat.lt_or_gt_of_ne","refs":[[26,29,"Nat"],[39,40,"Ne"],[48,49,"LT.lt"],[52,53,"Or"],[56,57,"GT.gt"]],"text":"Nat.lt_or_gt_of_ne {a b : Nat} (ne : a ≠ b) : a < b ∨ a > b"}
+{"decl":"Nat.one_pos","refs":[[16,17,"LT.lt"]],"text":"Nat.one_pos : 0 < 1"}
 {"decl":"Nat.pred","refs":[[11,14,"Nat"],[17,20,"Nat"]],"text":"Nat.pred : Nat → Nat"}
+{"decl":"Neg","refs":[],"text":"Neg.{u} (α : Type u) : Type u"}
 {"decl":"Not","refs":[],"text":"Not (a : Prop) : Prop"}
 {"decl":"OfNat","refs":[[25,28,"Nat"]],"text":"OfNat.{u} (α : Type u) : Nat → Type u"}
+{"decl":"Option","refs":[],"text":"Option.{u} (α : Type u) : Type u"}
+{"decl":"Or","refs":[],"text":"Or (a b : Prop) : Prop"}
+{"decl":"Or.elim","refs":[[30,31,"Or"]],"text":"Or.elim {a b c : Prop} (h : a ∨ b) (left : a → c) (right : b → c) : c"}
+{"decl":"eq_self","refs":[[42,43,"Eq"],[47,48,"Eq"],[49,53,"True"]],"text":"eq_self.{u_1} {α : Sort u_1} (a : α) : (a = a) = True"}
+{"decl":"id","refs":[],"text":"id.{u} {α : Sort u} (a : α) : α"}
 {"decl":"instAddNat","refs":[[13,16,"Add"],[17,20,"Nat"]],"text":"instAddNat : Add Nat"}
+{"decl":"instDecidableEqBool","refs":[[22,33,"DecidableEq"],[34,38,"Bool"]],"text":"instDecidableEqBool : DecidableEq Bool"}
+{"decl":"instDecidableEqNat","refs":[[21,32,"DecidableEq"],[33,36,"Nat"]],"text":"instDecidableEqNat : DecidableEq Nat"}
+{"decl":"instDecidableOr","refs":[[35,44,"Decidable"],[54,63,"Decidable"],[69,78,"Decidable"],[82,83,"Or"]],"text":"instDecidableOr {p q : Prop} [dp : Decidable p] [dq : Decidable q] : Decidable (p ∨ q)"}
 {"decl":"instHAdd","refs":[[31,34,"Add"],[40,44,"HAdd"]],"text":"instHAdd.{u_1} {α : Type u_1} [Add α] : HAdd α α α"}
 {"decl":"instHMul","refs":[[31,34,"Mul"],[40,44,"HMul"]],"text":"instHMul.{u_1} {α : Type u_1} [Mul α] : HMul α α α"}
+{"decl":"instHSub","refs":[[31,34,"Sub"],[40,44,"HSub"]],"text":"instHSub.{u_1} {α : Type u_1} [Sub α] : HSub α α α"}
 {"decl":"instLTNat","refs":[[12,14,"LT"],[15,18,"Nat"]],"text":"instLTNat : LT Nat"}
 {"decl":"instMulNat","refs":[[13,16,"Mul"],[17,20,"Nat"]],"text":"instMulNat : Mul Nat"}
+{"decl":"instNatCastInt","refs":[[17,24,"NatCast"],[25,28,"Int"]],"text":"instNatCastInt : NatCast Int"}
+{"decl":"instOfNat","refs":[[15,18,"Nat"],[22,27,"OfNat"],[28,31,"Int"]],"text":"instOfNat {n : Nat} : OfNat Int n"}
 {"decl":"instOfNatNat","refs":[[18,21,"Nat"],[25,30,"OfNat"],[31,34,"Nat"]],"text":"instOfNatNat (n : Nat) : OfNat Nat n"}
+{"decl":"le_of_le_of_eq","refs":[[49,51,"LE"],[63,64,"LE.le"],[76,77,"Eq"],[85,86,"LE.le"]],"text":"le_of_le_of_eq.{u_1} {α : Type u_1} {a b c : α} [LE α] (h₁ : a ≤ b) (h₂ : b = c) : a ≤ c"}
+{"decl":"of_decide_eq_true","refs":[[37,46,"Decidable"],[52,58,"Decidable.decide"],[61,62,"Eq"],[63,67,"Bool.true"]],"text":"of_decide_eq_true {p : Prop} [inst : Decidable p] : decide p = true → p"}
+{"decl":"of_eq_true","refs":[[29,30,"Eq"],[31,35,"True"]],"text":"of_eq_true {p : Prop} (h : p = True) : p"}
 {"decl":"outParam","refs":[],"text":"outParam.{u} (α : Sort u) : Sort u"}
+{"decl":"rfl","refs":[[33,34,"Eq"]],"text":"rfl.{u} {α : Sort u} {a : α} : a = a"}
