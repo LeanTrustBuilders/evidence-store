@@ -1,6 +1,6 @@
 {"toolchain": "leanprover/lean4:v4.35.0-rc2",
  "spec": "ltb-dataset/2",
- "producer": {"version": "0.9.0", "parts": 1, "name": "trust-extract"},
+ "producer": {"version": "0.11.0", "parts": 1, "name": "trust-extract"},
  "packages":
  [{"requires": ["TrustAnnotations", "lean4"], "name": "Fixture", "modules": 4},
   {"requires": ["lean4"], "name": "TrustAnnotations", "modules": 6},
@@ -105,7 +105,7 @@
    "file": "edges/term.bin",
    "description":
    "the type and the whole value, proofs included, restricted to targets that are nodes",
-   "count": 166},
+   "count": 163},
   {"name": "source",
    "format": "i32le-pairs",
    "file": "edges/source.bin",
