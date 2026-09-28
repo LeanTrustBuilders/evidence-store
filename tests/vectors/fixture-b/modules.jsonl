@@ -1,0 +1,4 @@
+{"doc":[],"imports":["Init","Fixture.Basic","Fixture.Notation","Fixture.Uses"],"name":"Fixture","path":"Fixture.lean"}
+{"doc":["# Fixture for the extractor\n\nVersion A. `test/fixture-b` overlays some of these files with a version B, and `test/check.py`\nchecks how every hash of the declaration key moves between the two.\n"],"imports":["Init","TrustAnnotations"],"name":"Fixture.Basic","path":"Fixture/Basic.lean"}
+{"doc":[],"imports":["Init","Fixture.Basic"],"name":"Fixture.Notation","path":"Fixture/Notation.lean"}
+{"doc":[],"imports":["Init","Fixture.Basic"],"name":"Fixture.Uses","path":"Fixture/Uses.lean"}

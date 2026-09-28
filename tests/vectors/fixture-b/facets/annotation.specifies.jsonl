@@ -1,0 +1,3 @@
+{"decl":"Fixture.IsDouble.unique","entries":[{"comment":"","target":"Fixture.double"}]}
+{"decl":"Fixture.double_triple","entries":[{"comment":"relates it to `triple`","target":"Fixture.double"},{"comment":"","target":"Fixture.triple"}]}
+{"decl":"Fixture.isDouble_double","entries":[{"comment":"","target":"Fixture.double"}]}

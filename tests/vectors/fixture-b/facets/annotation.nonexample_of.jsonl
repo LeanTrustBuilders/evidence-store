@@ -1,1 +1,1 @@
-{"decl":"Fixture.not_isSmall_twelve","payload":{"target":"Fixture.IsSmall"}}
+{"decl":"Fixture.not_isSmall_twelve","entries":[{"target":"Fixture.IsSmall"}]}

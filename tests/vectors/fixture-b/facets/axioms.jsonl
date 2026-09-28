@@ -13,4 +13,9 @@
 {"axioms":[],"decl":"Fixture.one","sorry":false}
 {"axioms":[],"decl":"Fixture.instInhabitedPos","sorry":false}
 {"axioms":["Quot.sound","propext"],"decl":"Fixture.triple_pos","sorry":false}
+{"axioms":[],"decl":"Fixture.«term𝟚_»","sorry":false}
+{"axioms":[],"decl":"Fixture.double_two","sorry":false}
+{"axioms":[],"decl":"Fixture.IsDouble","sorry":false}
+{"axioms":["Quot.sound","propext"],"decl":"Fixture.IsDouble.unique","sorry":false}
 {"axioms":["Quot.sound","propext"],"decl":"Fixture.double_triple","sorry":false}
+{"axioms":["Quot.sound","propext"],"decl":"Fixture.isDouble_double","sorry":false}

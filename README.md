@@ -77,7 +77,7 @@ records.
 **AI agents** are recorded as agents, with the account they acted through: in a form, "Written by: an
 AI agent, run by me" and the agent's tool and model; in a comment, a line
 `<!-- agent: tool=Claude Code; model=claude-opus-5-5; session=… -->`; and an account of type `Bot` is
-an agent. An agent's review needs a rationale. From a terminal, an agent writes exactly what the
+an agent. An agent's review says why. From a terminal, an agent writes exactly what the
 forms would:
 
 ```bash
@@ -111,7 +111,7 @@ evidence-store apply   --repo OWNER/NAME --outcome FILE
 evidence-store check   [--base REV] [--author LOGIN]
 evidence-store submit  --repo OWNER/NAME --decl NAME --verdict accept|problem|question …
 evidence-store challenge --repo OWNER/NAME --decl NAME --property TEXT [--statement LEAN] [--catches TEXT] [--modes F1,…]
-evidence-store test    --repo OWNER/NAME --decl NAME --test NAME [--checks TEXT] [--meets ID]
+evidence-store test    --repo OWNER/NAME --decl NAME --test NAME [--checks TEXT]
 evidence-store name    --repo OWNER/NAME --decl NAME --name TEXT [--what result|definition] [--about TEXT] [--source TEXT]
 evidence-store comment --repo OWNER/NAME --issue N --text TEXT [--agent "TOOL, MODEL"]
 evidence-store status  --repo OWNER/NAME --record ID --action withdraw|fixed|intended|invalid|answered|met|failed|declined|reopen [--test NAME] …

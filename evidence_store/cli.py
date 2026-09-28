@@ -6,7 +6,7 @@
   evidence-store check   [--base REV] [--author LOGIN]
   evidence-store submit  --repo OWNER/NAME --decl NAME --verdict accept|problem|question --agent "TOOL, MODEL" …
   evidence-store challenge --repo OWNER/NAME --decl NAME --property TEXT [--statement LEAN] …
-  evidence-store test    --repo OWNER/NAME --decl NAME --test NAME [--checks TEXT] [--meets ID]
+  evidence-store test    --repo OWNER/NAME --decl NAME --test NAME [--checks TEXT]
   evidence-store name    --repo OWNER/NAME --decl NAME --name TEXT [--what result|definition] …
   evidence-store comment --repo OWNER/NAME --issue N --text TEXT [--agent "TOOL, MODEL"]
   evidence-store status  --repo OWNER/NAME --record ID --action withdraw|fixed|met|… [--test NAME] [--note T]
@@ -268,7 +268,7 @@ def cmd_challenge(args) -> int:
 
 
 def cmd_test(args) -> int:
-    return open_form(args, "test", {"test": args.test, "checks": args.checks, "meets": args.meets,
+    return open_form(args, "test", {"test": args.test, "checks": args.checks,
                                     "involvement": args.involvement})
 
 
@@ -390,7 +390,6 @@ def main(argv: list[str] | None = None) -> int:
     common(q)
     q.add_argument("--test", required=True, help="the full name of the testing declaration")
     q.add_argument("--checks", default="", help="what it checks (required for agents)")
-    q.add_argument("--meets", default="", help="the id of a challenge it meets")
     q.add_argument("--involvement", default="outsider", choices=["outsider", "contributor", "author"])
     q.set_defaults(fn=cmd_test)
 

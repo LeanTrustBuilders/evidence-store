@@ -162,10 +162,6 @@ def iso(ts: str) -> str:
 
 # --- the issue -------------------------------------------------------------------------------------
 
-def subject_kind_for(decl) -> str:
-    return "instance" if decl.kind == "instance" else ("statement" if decl.is_prop else "definition")
-
-
 def lookup(ctx: Context, name: str, commit: str):
     """(dataset, declaration or None) for a name at a commit (the latest for ``""``)."""
     try:
@@ -194,7 +190,7 @@ def record_for(kind: str, answers: dict, by: dict, at: str, origin: dict, ctx: C
     ds, decl = lookup(ctx, name, commit)
     if decl is None:
         return None, [not_found(name, ds)]
-    base = {"schema": rec.SCHEMA, "subject": rec.subject_from_decl(decl, ds, subject_kind_for(decl)),
+    base = {"schema": rec.SCHEMA, "subject": rec.subject_from_decl(decl, ds),
             "by": by, "at": at, "origin": origin}
     errs: list[str] = []
     if kind in ("review", "problem", "question"):
@@ -218,16 +214,16 @@ def record_for(kind: str, answers: dict, by: dict, at: str, origin: dict, ctx: C
             if caveats:
                 r["caveats"] = caveats
             if answers.get("rationale"):
-                r["rationale"] = answers["rationale"]
+                r["text"] = answers["rationale"]
         elif kind == "problem":
             r["verdict"] = "problem"
-            r["problem"] = {"category": answers.get("category") or "other"}
-            r["rationale"] = answers.get("rationale", "")
+            r["category"] = answers.get("category") or "other"
+            r["text"] = answers.get("rationale", "")
             if answers.get("fix"):
                 r["fix"] = answers["fix"]
         else:
             r["verdict"] = "question"
-            r["rationale"] = answers.get("question", "")
+            r["text"] = answers.get("question", "")
         # The reviewer's current view: a new acceptance or problem supersedes their latest earlier
         # acceptance of the same declaration.
         if r["verdict"] in ("accept", "problem"):
@@ -237,7 +233,7 @@ def record_for(kind: str, answers: dict, by: dict, at: str, origin: dict, ctx: C
             if earlier:
                 r["links"] = {"supersedes": max(earlier, key=lambda x: x.get("at", ""))["id"]}
     elif kind == "challenge":
-        r = {**base, "kind": "challenge", "property": (answers.get("property") or "").strip()}
+        r = {**base, "kind": "challenge", "text": (answers.get("property") or "").strip()}
         for k in ("statement", "catches"):
             if (answers.get(k) or "").strip():
                 r[k] = answers[k].strip()
@@ -254,22 +250,15 @@ def record_for(kind: str, answers: dict, by: dict, at: str, origin: dict, ctx: C
         key = rec.subject_from_decl(tdecl, ds)
         r = {**base, "kind": "test", "test": {k: key[k] for k in ("name", "module", "commit", "hashes") if k in key}}
         if (answers.get("checks") or "").strip():
-            r["checks"] = answers["checks"].strip()
-        meets = clean(answers.get("meets"))
-        if meets:
-            target = next((x for x in ctx.store.records if x.get("id") == meets), None)
-            if target is None or target.get("kind") != "challenge":
-                errs.append(f"no challenge has the id `{meets}` in this store")
-            else:
-                r["links"] = {"meets": meets}
+            r["text"] = answers["checks"].strip()
     elif kind == "named":
         r = {**base, "kind": "named", "name": (answers.get("name") or "").strip(),
              "what": answers.get("what") or "result"}
         if (answers.get("about") or "").strip():
-            r["about"] = answers["about"].strip()
+            r["text"] = answers["about"].strip()
         if (answers.get("source") or "").strip():
             src = answers["source"].strip()
-            r["source"] = {"url": src} if re.match(r"^https?://\S+$", src) else {"text": src}
+            r["reference"] = {"url": src} if re.match(r"^https?://\S+$", src) else {"text": src}
     else:
         return None, [f"`{kind}` is not a kind of record"]
     r = rec.with_id(r)
@@ -459,7 +448,7 @@ def status_record(target: dict, state: str, by: dict, at: str, origin: dict, not
     r = {"schema": rec.SCHEMA, "kind": "status", "target": target["id"], "state": state, "by": by,
          "at": at, "origin": origin}
     if note:
-        r["note"] = note
+        r["text"] = note
     if commit and state == "fixed":
         r["commit"] = commit
     if test and state == "met":
@@ -511,7 +500,7 @@ def process_status_issue(issue: dict, ctx: Context, announce: bool = True) -> Ou
     home = issue_number(target, ctx.repo)
     if home is not None:
         out.replies.append((home, f"Now {said(state, r)}, by {rec.who(by)}, from #{n}."
-                                  + (f" {r['note']}" if r.get("note") else "")))
+                                  + (f" {r['text']}" if r.get("text") else "")))
         on_target_issue(out, home, state)
     return out
 

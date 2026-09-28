@@ -1,0 +1,40 @@
+{"decl":"Fixture.triple","refs":[[20,23,"Nat"],[27,30,"Nat"]],"text":"Fixture.triple (n : Nat) : Nat"}
+{"decl":"Fixture.not_isSmall_twelve","refs":[[29,30,"Not"],[30,45,"Fixture.IsSmall"]],"text":"Fixture.not_isSmall_twelve : ¬Fixture.IsSmall 12"}
+{"decl":"Fixture.double","refs":[[20,23,"Nat"],[27,30,"Nat"]],"text":"Fixture.double (n : Nat) : Nat"}
+{"decl":"Fixture.triple_three'","refs":[[24,38,"Fixture.triple"],[41,42,"Eq"]],"text":"Fixture.triple_three' : Fixture.triple 3 = 9"}
+{"decl":"Fixture.double_zero","refs":[[22,23,"Fixture.double"],[25,26,"Eq"]],"text":"Fixture.double_zero : 𝟚0 = 0"}
+{"decl":"Fixture.triple_one","refs":[[21,35,"Fixture.triple"],[38,39,"Eq"],[42,43,"HAdd.hAdd"],[46,47,"HAdd.hAdd"]],"text":"Fixture.triple_one : Fixture.triple 1 = 1 + 1 + 1"}
+{"decl":"Fixture.one_pos'","refs":[[21,22,"LT.lt"]],"text":"Fixture.one_pos' : 0 < 1"}
+{"decl":"Fixture.triple_comm","refs":[[25,28,"Nat"],[32,46,"Fixture.triple"],[49,50,"Eq"],[53,54,"HAdd.hAdd"],[57,58,"HAdd.hAdd"]],"text":"Fixture.triple_comm (b : Nat) : Fixture.triple b = b + b + b"}
+{"decl":"Fixture.IsSmall","refs":[[21,24,"Nat"]],"text":"Fixture.IsSmall (n : Nat) : Prop"}
+{"decl":"Fixture.isSmall_three","refs":[[24,39,"Fixture.IsSmall"]],"text":"Fixture.isSmall_three : Fixture.IsSmall 3"}
+{"decl":"Fixture.triple_two","refs":[[21,35,"Fixture.triple"],[38,39,"Eq"]],"text":"Fixture.triple_two : Fixture.triple 2 = 6"}
+{"decl":"Fixture.Pos","refs":[],"text":"Fixture.Pos : Type"}
+{"decl":"Fixture.one","refs":[[14,25,"Fixture.Pos"]],"text":"Fixture.one : Fixture.Pos"}
+{"decl":"Fixture.instInhabitedPos","refs":[[27,36,"Inhabited"],[37,48,"Fixture.Pos"]],"text":"Fixture.instInhabitedPos : Inhabited Fixture.Pos"}
+{"decl":"Fixture.triple_pos","refs":[[24,27,"Nat"],[36,37,"LT.lt"],[45,46,"LT.lt"],[47,61,"Fixture.triple"]],"text":"Fixture.triple_pos (n : Nat) (h : 0 < n) : 0 < Fixture.triple n"}
+{"decl":"Fixture.«term𝟚_»","refs":[[19,35,"Lean.ParserDescr"]],"text":"Fixture.«term𝟚_» : Lean.ParserDescr"}
+{"decl":"Fixture.double_two","refs":[[21,22,"Fixture.double"],[24,25,"Eq"]],"text":"Fixture.double_two : 𝟚2 = 4"}
+{"decl":"Fixture.IsDouble","refs":[[24,27,"Nat"]],"text":"Fixture.IsDouble (n m : Nat) : Prop"}
+{"decl":"Fixture.IsDouble.unique","refs":[[33,36,"Nat"],[44,60,"Fixture.IsDouble"],[72,88,"Fixture.IsDouble"],[100,101,"Eq"]],"text":"Fixture.IsDouble.unique {n a b : Nat} (ha : Fixture.IsDouble n a) (hb : Fixture.IsDouble n b) :\n  a = b"}
+{"decl":"Fixture.double_triple","refs":[[27,30,"Nat"],[34,35,"Fixture.double"],[37,38,"HAdd.hAdd"],[41,42,"Eq"],[43,57,"Fixture.triple"]],"text":"Fixture.double_triple (n : Nat) : 𝟚n + n = Fixture.triple n"}
+{"decl":"Fixture.isDouble_double","refs":[[29,32,"Nat"],[36,52,"Fixture.IsDouble"],[56,57,"Fixture.double"]],"text":"Fixture.isDouble_double (n : Nat) : Fixture.IsDouble n (𝟚n)"}
+{"decl":"Eq","refs":[],"text":"Eq.{u_1} {α : Sort u_1} : α → α → Prop"}
+{"decl":"HAdd","refs":[[46,54,"outParam"]],"text":"HAdd.{u, v, w} (α : Type u) (β : Type v) (γ : outParam (Type w)) : Type (max (max u v) w)"}
+{"decl":"HMul","refs":[[46,54,"outParam"]],"text":"HMul.{u, v, w} (α : Type u) (β : Type v) (γ : outParam (Type w)) : Type (max (max u v) w)"}
+{"decl":"Inhabited","refs":[],"text":"Inhabited.{u} (α : Sort u) : Sort (max 1 u)"}
+{"decl":"LT","refs":[],"text":"LT.{u} (α : Type u) : Type u"}
+{"decl":"Lean.Name.mkStr1","refs":[[23,29,"String"],[33,42,"Lean.Name"]],"text":"Lean.Name.mkStr1 (s₁ : String) : Lean.Name"}
+{"decl":"Lean.Name.mkStr2","refs":[[26,32,"String"],[36,45,"Lean.Name"]],"text":"Lean.Name.mkStr2 (s₁ s₂ : String) : Lean.Name"}
+{"decl":"Lean.ParserDescr","refs":[],"text":"Lean.ParserDescr : Type"}
+{"decl":"Nat","refs":[],"text":"Nat : Type"}
+{"decl":"Nat.pred","refs":[[11,14,"Nat"],[17,20,"Nat"]],"text":"Nat.pred : Nat → Nat"}
+{"decl":"Not","refs":[],"text":"Not (a : Prop) : Prop"}
+{"decl":"OfNat","refs":[[25,28,"Nat"]],"text":"OfNat.{u} (α : Type u) : Nat → Type u"}
+{"decl":"instAddNat","refs":[[13,16,"Add"],[17,20,"Nat"]],"text":"instAddNat : Add Nat"}
+{"decl":"instHAdd","refs":[[31,34,"Add"],[40,44,"HAdd"]],"text":"instHAdd.{u_1} {α : Type u_1} [Add α] : HAdd α α α"}
+{"decl":"instHMul","refs":[[31,34,"Mul"],[40,44,"HMul"]],"text":"instHMul.{u_1} {α : Type u_1} [Mul α] : HMul α α α"}
+{"decl":"instLTNat","refs":[[12,14,"LT"],[15,18,"Nat"]],"text":"instLTNat : LT Nat"}
+{"decl":"instMulNat","refs":[[13,16,"Mul"],[17,20,"Nat"]],"text":"instMulNat : Mul Nat"}
+{"decl":"instOfNatNat","refs":[[18,21,"Nat"],[25,30,"OfNat"],[31,34,"Nat"]],"text":"instOfNatNat (n : Nat) : OfNat Nat n"}
+{"decl":"outParam","refs":[],"text":"outParam.{u} (α : Sort u) : Sort u"}

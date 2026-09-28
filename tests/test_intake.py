@@ -118,7 +118,7 @@ class IntakeTests(unittest.TestCase):
                                                                         at="2026-09-26T12:00:00Z")], self.ctx)
         kinds = [(r["kind"], r.get("state")) for r in out.records]
         self.assertEqual(kinds, [("comment", None), ("status", "withdrawn")])
-        self.assertEqual(out.records[1]["note"], "I misread it")
+        self.assertEqual(out.records[1]["text"], "I misread it")
         self.assertEqual(self.ev().counting_accepts(F + "double", Policy()), [])
 
     def test_problem_lifecycle(self):
@@ -137,7 +137,7 @@ class IntakeTests(unittest.TestCase):
                                 ("status", "fixed", "carol"), ("status", "reopened", "maint"),
                                 ("status", "invalid", "erin")])
         fixed = out.records[3]
-        self.assertEqual((fixed["commit"], fixed["note"]), ("0123abcd", "now requires n > 0"))
+        self.assertEqual((fixed["commit"], fixed["text"]), ("0123abcd", "now requires n > 0"))
         self.assertTrue(any("only the author of a problem or a maintainer" in t for _, t in out.replies))
         self.assertEqual(out.labels[0], (2, ["evidence:open"], ["evidence:needs-fix"]))
         self.assertIn(2, out.reopen)
@@ -163,7 +163,7 @@ class IntakeTests(unittest.TestCase):
         answers = {"decl": F + "double", "who": "agent", "agent": "Claude Code, claude-opus-5-5"}
         out = process(issue(4, "review", answers), [], self.ctx)
         self.assertEqual(out.records, [])
-        self.assertIn("needs a rationale", out.replies[0][1])
+        self.assertIn("needs its text", out.replies[0][1])
         self.assertEqual(out.labels, [(4, ["evidence:needs-fix"], [])])
         out = process(issue(4, "review", {**answers, "rationale": "It is n + n."}), [], self.ctx)
         [r] = out.records
@@ -192,11 +192,11 @@ class IntakeTests(unittest.TestCase):
               comment(43, "/met `Fixture.double_zero` by rfl", by="carol", at="2026-09-26T13:00:00Z")]
         out = process(i, cs, self.ctx)
         c = out.records[0]
-        self.assertEqual((c["kind"], c["property"], c["statement"], c["modes"]),
+        self.assertEqual((c["kind"], c["text"], c["statement"], c["modes"]),
                          ("challenge", "`double 0 = 0`", "double 0 = 0", ["F3"]))
         self.assertEqual(out.labels[0], (40, ["evidence:open"], ["evidence:needs-fix"]))
         statuses = [r for r in out.records if r["kind"] == "status"]
-        self.assertEqual([(r["state"], r["test"]["name"], r.get("note")) for r in statuses],
+        self.assertEqual([(r["state"], r["test"]["name"], r.get("text")) for r in statuses],
                          [("met", F + "double_zero", "by rfl")])
         self.assertTrue(any("is not a declaration of the library" in t for _, t in out.replies))
         self.assertIn((40, "completed"), out.close)
@@ -221,7 +221,7 @@ class IntakeTests(unittest.TestCase):
                                "who": "person"})
         out = process(t, [], self.ctx)
         [r] = out.records
-        self.assertEqual((r["kind"], r["test"]["name"], r["checks"]), ("test", F + "double_zero", "the value at 0"))
+        self.assertEqual((r["kind"], r["test"]["name"], r["text"]), ("test", F + "double_zero", "the value at 0"))
         self.assertEqual(r["test"]["hashes"]["meaning"], B.by_name[F + "double_zero"].meaning)
         self.assertEqual(out.close, [(50, "completed")])
         bad = issue(51, "test", {"decl": F + "double", "test": "Fixture.nope", "who": "person"})
@@ -231,7 +231,7 @@ class IntakeTests(unittest.TestCase):
         n = issue(52, "named", {"decl": F + "triple_pos", "name": "Positivity of triple", "what": "result",
                                 "about": "It is positive.", "source": "https://example.org/roadmap", "who": "person"})
         [r] = process(n, [], self.ctx).records
-        self.assertEqual((r["kind"], r["name"], r["what"], r["source"]),
+        self.assertEqual((r["kind"], r["name"], r["what"], r["reference"]),
                          ("named", "Positivity of triple", "result", {"url": "https://example.org/roadmap"}))
         self.assertEqual(self.ev().named(F + "triple_pos"), [r])
 
@@ -277,7 +277,7 @@ class IntakeTests(unittest.TestCase):
                                  ("challenge", F + "triple")])
         self.assertTrue(all(r["by"]["kind"] == "agent" and r["by"]["agent"]["session"] == "s9" for r in out.records))
         self.assertEqual(out.records[2]["name"], "Positivity of triple")
-        self.assertEqual(out.records[2]["about"], "Atkin–Lehner-free — it is positive")
+        self.assertEqual(out.records[2]["text"], "Atkin–Lehner-free — it is positive")
         self.assertEqual(out.records[0]["origin"]["ref"],
                          f"https://github.com/{REPO}/issues/1#issuecomment-70/line/2")
         [(n, reply)] = out.replies
@@ -300,7 +300,7 @@ class IntakeTests(unittest.TestCase):
         out = process(issue(14, "status", {"record": review["id"], "action": "withdraw", "note": "a test"},
                             at="2026-09-26T12:00:00Z"), [], self.ctx)
         [st] = out.records
-        self.assertEqual((st["kind"], st["target"], st["state"], st["note"]), ("status", review["id"], "withdrawn", "a test"))
+        self.assertEqual((st["kind"], st["target"], st["state"], st["text"]), ("status", review["id"], "withdrawn", "a test"))
         self.assertEqual(st["origin"], {"kind": "issue", "ref": f"{REPO}#14"})
         self.assertEqual([n for n, _ in out.replies], [14, 10])
         self.assertIn("from #14", out.replies[1][1])

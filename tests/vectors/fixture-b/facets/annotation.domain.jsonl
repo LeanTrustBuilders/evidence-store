@@ -1,0 +1,1 @@
+{"decl":"Nat.pred","entries":[{"note":"the predecessor of 0 is 0","predicate":"Nat.pred._domain","source":"catalogue","statement":"fun n => 0 < n"}]}

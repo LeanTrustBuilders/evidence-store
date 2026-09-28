@@ -1,0 +1,3 @@
+{"decl":"Fixture.IsDouble","entries":[{"comment":"the defining equation","property":"Fixture.IsDouble","relation":"","relationHead":"[anonymous]","role":"property","target":"Fixture.double"}]}
+{"decl":"Fixture.IsDouble.unique","entries":[{"comment":"","property":"Fixture.IsDouble","relation":"a = b","relationHead":"Eq","role":"uniqueness","target":"Fixture.double"}]}
+{"decl":"Fixture.isDouble_double","entries":[{"comment":"","property":"Fixture.IsDouble","relation":"","relationHead":"[anonymous]","role":"existence","target":"Fixture.double"}]}

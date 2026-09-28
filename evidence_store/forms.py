@@ -146,8 +146,6 @@ FORMS = {
              "description": "The full name of the declaration that tests it, e.g. `MyLib.Foo.bar_zero`."},
             {"id": "checks", "type": "textarea", "label": "What it checks",
              "description": "Optional for people, required for AI agents."},
-            {"id": "meets", "type": "input", "label": "Meets the challenge",
-             "description": "Optional: the id of a challenge it meets (16 hexadecimal digits)."},
             INVOLVED, WHO_FIELD, AGENT,
         ],
     },
