@@ -19,6 +19,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
+import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -221,6 +224,40 @@ def cmd_dataset(args) -> int:
     return 0
 
 
+def cmd_fetch_imports(args) -> int:
+    """Fetches the stores a store imports (``store.json``, ``imports``) into ``--out``, for the
+    views that show their records beside the store's own (evidence-core's ``with_imports``): each
+    at ``<out>/<owner>/<name>``, and ``<out>/imports.json`` saying at which commit each was read.
+    Each is fetched afresh, at its ``ref`` (a branch, tag or commit), else its default branch."""
+    store = sto.Store.load(args.store)
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    base = os.environ.get("EVIDENCE_STORE_GIT_BASE", "https://github.com/")
+    manifest = []
+    for spec in store.imports:
+        where = out / spec["repo"]
+        if where.exists():
+            shutil.rmtree(where)
+        where.mkdir(parents=True)
+        git = lambda *a: subprocess.run(["git", "-C", str(where), *a], capture_output=True, text=True)
+        git("init", "-q")
+        fetched = git("fetch", "-q", "--depth", "1", base + spec["repo"], spec["ref"] or "HEAD")
+        if fetched.returncode != 0:
+            print(f"error: {spec['repo']}: {fetched.stderr.strip()}", file=sys.stderr)
+            return 1
+        git("checkout", "-q", "FETCH_HEAD")
+        commit = git("rev-parse", "HEAD").stdout.strip()
+        try:
+            n = len(sto.Store.load(where / spec["path"]).records)
+        except sto.StoreError as e:
+            print(f"error: {spec['repo']}: {e}", file=sys.stderr)
+            return 1
+        manifest.append({**spec, "commit": commit})
+        print(f"{spec['repo']} at {commit[:12]}: {n} records")
+    (out / sto.IMPORTS_MANIFEST).write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
+    return 0
+
+
 def agent_mark(agent: str) -> str:
     a = rec.parse_agent(agent)
     return "<!-- agent: " + "; ".join(f"{k}={v}" for k, v in a.items()) + " -->"
@@ -371,6 +408,11 @@ def main(argv: list[str] | None = None) -> int:
     q.add_argument("--asset", help="the release asset (default: dataset.tar.gz)")
     q.add_argument("--out", required=True, help="where to unpack it (with --all, a directory of them)")
     q.set_defaults(fn=cmd_dataset)
+
+    q = sub.add_parser("fetch-imports", help="fetch the stores this one imports, for its views")
+    q.add_argument("--store", default="evidence")
+    q.add_argument("--out", required=True, help="where to put them (then evidence-core's --imports)")
+    q.set_defaults(fn=cmd_fetch_imports)
 
     q = sub.add_parser("check", help="check a change to the store")
     q.add_argument("--repo-dir", default=".")

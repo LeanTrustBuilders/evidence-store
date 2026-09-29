@@ -101,11 +101,15 @@ evidence-store apply   --repo OWNER/NAME --outcome FILE
 evidence-store check   [--base REV] [--author LOGIN]
 evidence-store add     FILE [--store evidence]
 evidence-store dataset [--commit SHA | --all] --out DIR [--store evidence] [--repo OWNER/NAME --tag 'dataset-{commit12}']
+evidence-store fetch-imports --out DIR [--store evidence]
 evidence-store submit | challenge | test | name | comment | status   (above)
 ```
 
 `dataset` fetches datasets from their releases, as intake does: where `store.json` says, or, without
-a store, where `--repo` and `--tag` say. The composite actions `LeanTrustBuilders/evidence-store/intake`
+a store, where `--repo` and `--tag` say. `fetch-imports` fetches the stores `store.json` imports
+(`imports`, S3's "Imported records") into a directory, each at the commit its `ref` names or its
+default branch, with `imports.json` saying which; a view then reads them beside the store's own
+records (evidence-core's `with_imports`, and `--imports DIR` for `trust-site`). The composite actions `LeanTrustBuilders/evidence-store/intake`
 and `…/check` are what the generated workflows run. `intake` reads, commits the records, then replies
 on the issues, so a reply never announces a record the store did not keep; with `pages-workflow`, it
 then runs that workflow to rebuild a page.
