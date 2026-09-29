@@ -13,11 +13,16 @@ evidence-store init --repo OWNER/NAME --root MyLib --labels     # in the reposit
 
 | path | what it is |
 |---|---|
-| `evidence/store.json` | the store: the library it is about, where its datasets are, its claims and maintainers |
+| `evidence/store.json` | the store: the library it is about, where its datasets are, its claims and maintainers, and its rubric if not the standard one |
 | `evidence/records/*.jsonl` | the records, one file per month, append-only |
 | `.github/ISSUE_TEMPLATE/evidence-*.yml` | issue forms: review a declaration, report a problem, ask a question, propose a test (a **challenge**), list a test, name a result, and change a record's state |
 | `.github/workflows/evidence-intake.yml` | intake: turns those issues and their comments into records |
 | `.github/workflows/evidence-check.yml` | checks every change to the store |
+
+The forms ask what a review checked, what is wrong with a declaration and what a challenge would
+catch in terms of the store's **rubric** (S3): `ltb-rubric/1` (`object`, `convention`, `edge-cases`,
+`junk`, `vacuous`, `choice`, `generality`, `naming`) unless `store.json` gives another, as `{name,
+axes: [{name, check, problem}]}`. Run `init` again after changing it, to rewrite the forms.
 
 Intake keys each record by the reviewed declaration's hashes, so it needs the library's **datasets**
 (S2): by default a release `dataset-<commit12>` with an asset `dataset.tar.gz` per commit, as the
@@ -69,12 +74,12 @@ From a terminal, an agent writes exactly what the forms would:
 
 ```bash
 evidence-store submit --repo OWNER/NAME --decl MyLib.foo --verdict accept \
-  --checked F1,F2,F3 --reference "Rudin, Principles §3.1" --rationale "…" \
+  --checked object,convention,edge-cases --reference "Rudin, Principles §3.1" --rationale "…" \
   --agent "Claude Code, claude-opus-5-5"
-evidence-store submit --repo OWNER/NAME --decl MyLib.foo --verdict problem --category F3 --rationale "…" --agent "…"
+evidence-store submit --repo OWNER/NAME --decl MyLib.foo --verdict problem --category edge-cases --rationale "…" --agent "…"
 evidence-store comment --repo OWNER/NAME --issue 12 --text "It is 0: by rfl." --agent "…"
 evidence-store status  --repo OWNER/NAME --record 41fe3cfb8d7af478 --action withdraw --agent "…"
-evidence-store challenge --repo OWNER/NAME --decl MyLib.foo --property "foo 0 = 0" --statement "MyLib.foo 0 = 0" --modes F3 --agent "…"
+evidence-store challenge --repo OWNER/NAME --decl MyLib.foo --property "foo 0 = 0" --statement "MyLib.foo 0 = 0" --modes edge-cases --agent "…"
 evidence-store test    --repo OWNER/NAME --decl MyLib.foo --test MyLib.foo_zero --checks "the value at 0" --agent "…"
 evidence-store name    --repo OWNER/NAME --decl MyLib.main --name "The main theorem" --about "…" --agent "…"
 ```

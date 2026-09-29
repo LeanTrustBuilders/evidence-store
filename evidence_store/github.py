@@ -135,6 +135,12 @@ def apply(outcome: dict, repo: str) -> None:
            f"content={content}", check=False)
 
 
+def store_config(repo: str, store: str = "evidence") -> dict:
+    """The ``store.json`` of the store in a repository."""
+    return json.loads(gh("api", f"repos/{repo}/contents/{store}/store.json",
+                         "-H", "Accept: application/vnd.github.raw"))
+
+
 def create_issue(repo: str, title: str, body: str, label: str) -> str:
     """Opens an issue as a form would, and returns its URL."""
     ensure_labels(repo)

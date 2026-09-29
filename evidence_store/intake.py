@@ -59,6 +59,7 @@ from typing import Callable
 
 from evidence_core import Dataset
 from evidence_core import records as rec
+from evidence_core.rubric import OTHER
 from evidence_core.store import Store
 
 from . import forms
@@ -190,6 +191,7 @@ def record_for(kind: str, answers: dict, by: dict, at: str, origin: dict, ctx: C
     ds, decl = lookup(ctx, name, commit)
     if decl is None:
         return None, [not_found(name, ds)]
+    rubric = ctx.store.rubric
     base = {"schema": rec.SCHEMA, "subject": rec.subject_from_decl(decl, ds),
             "by": by, "at": at, "origin": origin}
     errs: list[str] = []
@@ -205,8 +207,9 @@ def record_for(kind: str, answers: dict, by: dict, at: str, origin: dict, ctx: C
                 r["checked"] = {code: ("checked" if on else "unchecked")
                                 for code, on in answers["checked"].items()}
             caveats = []
-            for line in (answers.get("caveats") or "").splitlines():
-                m = re.match(r"^\s*[-*]?\s*(F\d|naming|other)\s*[:—-]\s*(.+)$", line)
+            axes = "|".join(re.escape(n) for n in sorted(rubric.names + [OTHER], key=len, reverse=True))
+            for line in (answers.get("caveats") or "").split("\n"):
+                m = re.match(rf"^\s*[-*]?\s*({axes})\s*[:—-]\s*(.+)$", line)
                 if m:
                     caveats.append({"category": m.group(1), "note": m.group(2).strip()})
                 elif line.strip():
@@ -261,8 +264,10 @@ def record_for(kind: str, answers: dict, by: dict, at: str, origin: dict, ctx: C
             r["reference"] = {"url": src} if re.match(r"^https?://\S+$", src) else {"text": src}
     else:
         return None, [f"`{kind}` is not a kind of record"]
+    if any(k in r for k in ("category", "checked", "caveats", "modes")):
+        r["rubric"] = rubric.name
     r = rec.with_id(r)
-    errs += rec.validate(r)
+    errs += rec.validate(r, {rubric.name: rubric})
     return (None, errs) if errs else (r, [])
 
 
@@ -279,7 +284,7 @@ def review_record(kind: str, answers: dict, issue: dict, ctx: Context) -> tuple[
 def describe(r: dict) -> str:
     s = r["subject"]
     if r["kind"] == "review":
-        what = {"accept": "review", "problem": f"problem ({r.get('problem', {}).get('category')})",
+        what = {"accept": "review", "problem": f"problem ({r.get('category')})",
                 "question": "question"}[r["verdict"]]
     else:
         what = {"challenge": "challenge (a proposed test)", "test": f"test `{r.get('test', {}).get('name')}`",
@@ -324,7 +329,7 @@ def process_issue(issue: dict, ctx: Context, announce: bool = True) -> tuple[Out
     existing = [r for r in ctx.store.from_origin(ref) if r.get("kind") in ("review", "challenge", "test", "named")]
     if existing:
         return out, existing[0]
-    answers = forms.parse(kind, issue.get("body", ""))
+    answers = forms.parse(kind, issue.get("body", ""), ctx.store.rubric)
     n = issue["number"]
     try:
         r, errs = review_record(kind, answers, issue, ctx)

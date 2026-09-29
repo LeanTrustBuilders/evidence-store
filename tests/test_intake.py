@@ -16,6 +16,9 @@ from pathlib import Path
 from evidence_core import Dataset, Evidence, Policy
 from evidence_core import store as sto
 
+from unittest import mock
+
+from evidence_core.rubric import STANDARD
 from evidence_store import forms
 from evidence_store.cli import main as cli
 from evidence_store.intake import Context, process
@@ -31,9 +34,9 @@ def user(login: str, kind: str = "User") -> dict:
 
 
 def issue(number: int, kind: str, answers: dict, by: str = "alice", at: str = "2026-09-26T10:00:00Z",
-          association: str = "NONE") -> dict:
+          association: str = "NONE", rubric=STANDARD) -> dict:
     return {"number": number, "title": forms.FORMS[kind]["title"] + answers.get("decl", ""),
-            "body": forms.body(kind, answers), "user": user(by), "created_at": at,
+            "body": forms.body(kind, answers, rubric), "user": user(by), "created_at": at,
             "labels": [{"name": forms.FORMS[kind]["label"]}], "author_association": association}
 
 
@@ -50,8 +53,8 @@ def comment(cid: int, body: str, by: str = "bob", at: str = "2026-09-26T11:00:00
 
 class FormTests(unittest.TestCase):
     def test_round_trip(self):
-        answers = {"decl": F + "double", "reference": "Knuth, TAOCP §1.2", "caveats": "F3: at 0",
-                   "checked": {c: c in ("F1", "F3") for c, _ in forms.CHECKS},
+        answers = {"decl": F + "double", "reference": "Knuth, TAOCP §1.2", "caveats": "edge-cases: at 0",
+                   "checked": {c: c in ("object", "edge-cases") for c in STANDARD.names},
                    "involvement": "outsider", "who": "person"}
         self.assertEqual(forms.parse("review", forms.body("review", answers)), answers)
 
@@ -60,11 +63,11 @@ class FormTests(unittest.TestCase):
         # ones as `[x]` (from a real submission).
         body = ("### Declaration\n\nFixture.double\n\n### Commit\n\n_No response_\n\n"
                 "### Compared with\n\n_No response_\n\n### What you checked\n\n"
-                "- [x] F1: the intended object, not a different notion\n- [ ] F2: its conventions: normalization, indexing, signs\n\n"
+                "- [x] object: it is the intended notion\n- [ ] convention: it follows the source's conventions\n\n"
                 "### Caveats\n\n_No response_\n\n### Why\n\nIt doubles.\n\n### You are\n\nan outsider to this library\n\n"
                 "### Written by\n\nme, a person\n\n### Agent\n\n_No response_\n")
         self.assertEqual(forms.parse("review", body),
-                         {"decl": F + "double", "checked": {"F1": True, "F2": False},
+                         {"decl": F + "double", "checked": {"object": True, "convention": False},
                           "rationale": "It doubles.", "involvement": "outsider", "who": "person"})
 
     def test_templates(self):
@@ -77,6 +80,31 @@ class FormTests(unittest.TestCase):
             self.assertEqual(t["labels"], [forms.FORMS[kind]["label"]])
             ids = [f["id"] for f in t["body"] if "id" in f]
             self.assertEqual(ids, [f["id"] for f in forms.FORMS[kind]["fields"]])
+
+
+class RubricTests(unittest.TestCase):
+    """A store that asks for its own rubric: its forms list that rubric's axes, and intake records
+    them with the rubric's name."""
+
+    MINE = {"name": "https://example.org/precision/1",
+            "axes": [{"name": "precision", "check": "it is as precise as the source",
+                      "problem": "imprecise"}]}
+
+    def test_forms_and_intake(self):
+        with tempfile.TemporaryDirectory() as d:
+            store = sto.Store.init(Path(d) / "evidence", {**sto.default_config(REPO, "Fixture"), "rubric": self.MINE})
+            ctx = Context(repo=REPO, store=store, dataset=lambda commit: B)
+            t = forms.template("problem", store.rubric)
+            self.assertIn('options:\n        - "imprecise"\n        - "something else"\n', t)
+            out = process(issue(1, "problem", {"decl": F + "triple", "category": "precision", "rationale": "r",
+                                               "who": "person"}, rubric=store.rubric), [], ctx)
+            [r] = out.records
+            self.assertEqual((r["rubric"], r["category"]), (self.MINE["name"], "precision"))
+            # An axis of another rubric is not one of this store's: the issue is told what to fix.
+            out = process(issue(2, "review", {"decl": F + "triple", "checked": {"object": True}, "who": "person"}),
+                          [], ctx)
+            self.assertEqual(out.records, [])
+            self.assertTrue(any("not an axis of" in t for _, t in out.replies))
 
 
 class IntakeTests(unittest.TestCase):
@@ -94,7 +122,7 @@ class IntakeTests(unittest.TestCase):
 
     def test_review(self):
         i = issue(1, "review", {"decl": F + "double", "reference": "see https://example.org/d.",
-                                "checked": {"F1": True, "F4": False}, "caveats": "F3: odd at 0\nplain note",
+                                "checked": {"object": True, "junk": False}, "caveats": "edge-cases: odd at 0\nplain note",
                                 "involvement": "outsider", "who": "person"})
         out = process(i, [], self.ctx)
         [r] = out.records
@@ -103,9 +131,10 @@ class IntakeTests(unittest.TestCase):
         self.assertEqual(r["verdict"], "accept")
         self.assertEqual(r["subject"]["hashes"]["meaning"], B.by_name[F + "double"].meaning)
         self.assertEqual(r["reference"]["url"], "https://example.org/d")
-        # The form lists every failure mode: what is not ticked is recorded as not checked.
-        self.assertEqual(r["checked"], {c: "checked" if c == "F1" else "unchecked" for c, _ in forms.CHECKS})
-        self.assertEqual(r["caveats"], [{"category": "F3", "note": "odd at 0"},
+        # The form lists every axis of the store's rubric: what is not ticked is recorded as not checked.
+        self.assertEqual(r["rubric"], "ltb-rubric/1")
+        self.assertEqual(r["checked"], {c: "checked" if c == "object" else "unchecked" for c in STANDARD.names})
+        self.assertEqual(r["caveats"], [{"category": "edge-cases", "note": "odd at 0"},
                                         {"category": "other", "note": "plain note"}])
         self.assertEqual(r["origin"], {"kind": "issue", "ref": f"{REPO}#1"})
         self.assertEqual(out.close, [(1, "completed")])
@@ -122,7 +151,7 @@ class IntakeTests(unittest.TestCase):
         self.assertEqual(self.ev().counting_accepts(F + "double", Policy()), [])
 
     def test_problem_lifecycle(self):
-        i = issue(2, "problem", {"decl": F + "triple", "category": "F3", "rationale": "wrong at 0",
+        i = issue(2, "problem", {"decl": F + "triple", "category": "edge-cases", "rationale": "wrong at 0",
                                  "who": "person"}, by="carol")
         cs = [comment(20, "Are you sure? triple 0 = 0.", by="dave"),
               comment(21, "/fixed 0123abcd", by="dave", at="2026-09-26T12:00:00Z"),
@@ -176,7 +205,7 @@ class IntakeTests(unittest.TestCase):
         second = process(issue(6, "review", {"decl": F + "triple", "who": "person"},
                                at="2026-09-27T10:00:00Z"), [], self.ctx).records[0]
         self.assertEqual(second["links"], {"supersedes": first["id"]})
-        other = process(issue(7, "problem", {"decl": F + "triple", "category": "F1", "rationale": "no",
+        other = process(issue(7, "problem", {"decl": F + "triple", "category": "object", "rationale": "no",
                                              "who": "person"}, by="zed"), [], self.ctx).records[0]
         self.assertNotIn("links", other)
         ev = self.ev()
@@ -186,14 +215,14 @@ class IntakeTests(unittest.TestCase):
     def test_a_challenge_is_met_by_a_declaration_of_the_library(self):
         i = issue(40, "challenge", {"decl": F + "double", "property": "`double 0 = 0`",
                                     "statement": "double 0 = 0", "catches": "an offset",
-                                    "modes": {"F3": True, "F1": False}, "who": "person"}, by="carol")
+                                    "modes": {"edge-cases": True, "object": False}, "who": "person"}, by="carol")
         cs = [comment(41, "/met Fixture.double_zero", by="dave"),           # not the author: refused
               comment(42, "/met Fixture.nope", by="carol", at="2026-09-26T12:00:00Z"),
               comment(43, "/met `Fixture.double_zero` by rfl", by="carol", at="2026-09-26T13:00:00Z")]
         out = process(i, cs, self.ctx)
         c = out.records[0]
         self.assertEqual((c["kind"], c["text"], c["statement"], c["modes"]),
-                         ("challenge", "`double 0 = 0`", "double 0 = 0", ["F3"]))
+                         ("challenge", "`double 0 = 0`", "double 0 = 0", ["edge-cases"]))
         self.assertEqual(out.labels[0], (40, ["evidence:open"], ["evidence:needs-fix"]))
         statuses = [r for r in out.records if r["kind"] == "status"]
         self.assertEqual([(r["state"], r["test"]["name"], r.get("text")) for r in statuses],
@@ -236,13 +265,13 @@ class IntakeTests(unittest.TestCase):
         self.assertEqual(self.ev().named(F + "triple_pos"), [r])
 
     def test_a_problem_can_say_its_fix(self):
-        i = issue(55, "problem", {"decl": F + "triple", "category": "F3", "rationale": "0", "fix": "def triple := 3 * n",
+        i = issue(55, "problem", {"decl": F + "triple", "category": "edge-cases", "rationale": "0", "fix": "def triple := 3 * n",
                                   "who": "person"})
         [r] = process(i, [], self.ctx).records
         self.assertEqual(r["fix"], "def triple := 3 * n")
 
     def test_closing_and_reopening_by_hand(self):
-        i = issue(60, "problem", {"decl": F + "triple", "category": "F3", "rationale": "0", "who": "person"}, by="carol")
+        i = issue(60, "problem", {"decl": F + "triple", "category": "edge-cases", "rationale": "0", "who": "person"}, by="carol")
         evs = [event(1, "closed", "carol", "2026-09-26T12:00:00Z", "completed"),
                event(2, "reopened", "maint", "2026-09-26T13:00:00Z"),
                event(3, "closed", "github-actions[bot]", "2026-09-26T14:00:00Z", "completed"),
@@ -253,7 +282,7 @@ class IntakeTests(unittest.TestCase):
         self.assertEqual(out.records[1]["origin"], {"kind": "event", "ref": f"{REPO}#60/event/1"})
         # Idempotent, and a close that follows a command (the bot closing after /fixed) says nothing new.
         self.assertEqual(process(i, [], self.ctx, events=evs).records, [])
-        j = issue(61, "problem", {"decl": F + "triple", "category": "F3", "rationale": "0", "who": "person"}, by="carol")
+        j = issue(61, "problem", {"decl": F + "triple", "category": "edge-cases", "rationale": "0", "who": "person"}, by="carol")
         out = process(j, [comment(62, "/fixed", by="carol", at="2026-09-26T12:00:00Z")], self.ctx,
                       events=[event(5, "closed", "carol", "2026-09-26T12:00:05Z", "completed")])
         self.assertEqual([r.get("state") for r in out.records if r["kind"] == "status"], ["fixed"])
@@ -287,7 +316,7 @@ class IntakeTests(unittest.TestCase):
 
     def test_status_form(self):
         review = process(issue(10, "review", {"decl": F + "double", "who": "person"}), [], self.ctx).records[0]
-        problem = process(issue(11, "problem", {"decl": F + "triple", "category": "F3", "rationale": "at 0",
+        problem = process(issue(11, "problem", {"decl": F + "triple", "category": "edge-cases", "rationale": "at 0",
                                                 "who": "person"}, by="carol"), [], self.ctx).records[0]
         # Someone else cannot withdraw alice's review; an unknown id is refused too.
         out = process(issue(12, "status", {"record": review["id"], "action": "withdraw"}, by="bob"), [], self.ctx)
@@ -350,10 +379,15 @@ class CliTests(unittest.TestCase):
             self.assertIn("types: [opened, edited, closed, reopened]", wf)
             self.assertIn("pages-workflow: 'pages.yml'", wf)
             buf = io.StringIO()
-            with redirect_stdout(buf):
+            config = json.loads((root / "evidence" / "store.json").read_text())
+            with redirect_stdout(buf), mock.patch("evidence_store.github.store_config", return_value=config):
                 cli(["submit", "--repo", REPO, "--decl", F + "double", "--verdict", "accept",
-                     "--checked", "F1,F2", "--rationale", "n + n", "--agent", "Claude Code, claude-opus-5-5",
-                     "--dry-run"])
+                     "--checked", "object,convention", "--rationale", "n + n",
+                     "--agent", "Claude Code, claude-opus-5-5", "--dry-run"])
+                # A name that is not an axis of the store's rubric is refused before anything is opened.
+                with self.assertRaises(SystemExit):
+                    cli(["submit", "--repo", REPO, "--decl", F + "double", "--verdict", "problem",
+                         "--category", "F3", "--rationale", "?", "--dry-run"])
             title, body = buf.getvalue().split("\n\n", 1)
             self.assertEqual(title, "Review: " + F + "double")
             buf = io.StringIO()
@@ -362,7 +396,7 @@ class CliTests(unittest.TestCase):
             st = forms.parse("status", buf.getvalue().split("\n\n", 1)[1])
             self.assertEqual((st["record"], st["action"], st["who"]), ("0123456789abcdef", "withdraw", "person"))
             a = forms.parse("review", body)
-            self.assertEqual((a["who"], a["agent"], a["checked"]["F2"], a["checked"]["F3"]),
+            self.assertEqual((a["who"], a["agent"], a["checked"]["convention"], a["checked"]["edge-cases"]),
                              ("agent", "Claude Code, claude-opus-5-5", True, False))
 
 

@@ -24,6 +24,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from evidence_core import records as rec
+from evidence_core import rubric as rb
 from evidence_core import store as sto
 
 from . import forms
@@ -107,9 +108,9 @@ def cmd_init(args) -> int:
     else:
         config = sto.default_config(args.repo, args.root, args.datasets_repo or None)
         config["claims"] = args.claim
-        sto.Store.init(store_dir, config)
+        store = sto.Store.init(store_dir, config)
         print(f"{store_dir}: new store for {args.repo}")
-    write_forms(root)
+    write_forms(root, store.rubric)
     wf = root / ".github" / "workflows"
     wf.mkdir(parents=True, exist_ok=True)
     (wf / "evidence-intake.yml").write_text(INTAKE_WORKFLOW.format(ref=ACTIONS_REF, store=args.store,
@@ -123,11 +124,11 @@ def cmd_init(args) -> int:
     return 0
 
 
-def write_forms(root: Path) -> None:
+def write_forms(root: Path, rubric: rb.Rubric) -> None:
     d = root / ".github" / "ISSUE_TEMPLATE"
     d.mkdir(parents=True, exist_ok=True)
-    for kind, f in forms.FORMS.items():
-        (d / f["file"]).write_text(forms.template(kind), encoding="utf-8")
+    for kind, f in forms.forms(rubric).items():
+        (d / f["file"]).write_text(forms.template(kind, rubric), encoding="utf-8")
 
 
 def cmd_intake(args) -> int:
@@ -165,9 +166,10 @@ def cmd_apply(args) -> int:
 
 
 def cmd_check(args) -> int:
-    after = sto.Store.load(Path(args.repo_dir) / args.store).records
+    store = sto.Store.load(Path(args.repo_dir) / args.store)
+    after = store.records
     before = sto.records_at(args.repo_dir, args.base, args.store) if args.base else []
-    errs = sto.check(before, after, author=args.author or None)
+    errs = sto.check(before, after, author=args.author or None, rubrics={store.rubric.name: store.rubric})
     for e in errs:
         print(f"::error::{e}")
     new = len({r["id"] for r in after} - {r["id"] for r in before})
@@ -224,20 +226,42 @@ def agent_mark(agent: str) -> str:
     return "<!-- agent: " + "; ".join(f"{k}={v}" for k, v in a.items()) + " -->"
 
 
+def store_rubric(repo: str) -> rb.Rubric:
+    """The rubric of the store in a repository, from its ``store.json`` on GitHub."""
+    from . import github
+    return rb.of_config(github.store_config(repo))
+
+
+def axes(given: str, rubric: rb.Rubric, other: bool = False) -> list[str]:
+    """Comma-separated axis names, each one of ``rubric``'s (or ``other``, if allowed)."""
+    names = [n.strip() for n in given.split(",") if n.strip()]
+    allowed = rubric.names + ([rb.OTHER] if other else [])
+    unknown = [n for n in names if n not in allowed]
+    if unknown:
+        raise SystemExit(f"error: {', '.join(unknown)}: not an axis of {rubric.name} "
+                         f"({', '.join(allowed)})")
+    return names
+
+
 def cmd_submit(args) -> int:
     kind = {"accept": "review", "problem": "problem", "question": "question"}[args.verdict]
+    rubric = store_rubric(args.repo)
     answers = {"decl": args.decl, "commit": args.commit, "involvement": args.involvement,
                "who": "agent" if args.agent else "person", "agent": args.agent}
     if kind == "review":
+        checked = axes(args.checked, rubric)
+        axes(",".join(c.split(":", 1)[0] for c in args.caveat if ":" in c), rubric, other=True)
         answers.update(reference=args.reference, rationale=args.rationale,
                        caveats="\n".join(args.caveat),
-                       checked={code: code in args.checked.split(",") for code, _ in forms.CHECKS}
-                       if args.checked else {})
+                       checked={n: n in checked for n in rubric.names} if checked else {})
     elif kind == "problem":
-        answers.update(category=args.category, rationale=args.rationale)
+        category = axes(args.category, rubric, other=True)
+        if len(category) > 1:
+            raise SystemExit("error: --category takes one axis")
+        answers.update(category=category[0] if category else rb.OTHER, rationale=args.rationale)
     else:
         answers.update(question=args.question or args.rationale)
-    text = forms.body(kind, answers)
+    text = forms.body(kind, answers, rubric)
     title = forms.FORMS[kind]["title"] + args.decl
     if args.dry_run:
         print(f"{title}\n\n{text}")
@@ -247,10 +271,10 @@ def cmd_submit(args) -> int:
     return 0
 
 
-def open_form(args, kind: str, answers: dict) -> int:
+def open_form(args, kind: str, answers: dict, rubric: rb.Rubric = rb.STANDARD) -> int:
     answers = {"decl": args.decl, "commit": args.commit, "who": "agent" if args.agent else "person",
                "agent": args.agent, **answers}
-    text = forms.body(kind, answers)
+    text = forms.body(kind, answers, rubric)
     title = forms.FORMS[kind]["title"] + args.decl
     if args.dry_run:
         print(f"{title}\n\n{text}")
@@ -261,10 +285,12 @@ def open_form(args, kind: str, answers: dict) -> int:
 
 
 def cmd_challenge(args) -> int:
-    modes = set(args.modes.split(",")) if args.modes else set()
+    rubric = store_rubric(args.repo)
+    modes = axes(args.modes, rubric)
     return open_form(args, "challenge", {"property": args.property, "statement": args.statement,
                                          "catches": args.catches, "involvement": args.involvement,
-                                         "modes": {code: code in modes for code, _ in forms.CHECKS} if modes else {}})
+                                         "modes": {n: n in modes for n in rubric.names} if modes else {}},
+                     rubric)
 
 
 def cmd_test(args) -> int:
@@ -359,10 +385,11 @@ def main(argv: list[str] | None = None) -> int:
     q.add_argument("--verdict", required=True, choices=["accept", "problem", "question"])
     q.add_argument("--commit", default="")
     q.add_argument("--reference", default="")
-    q.add_argument("--checked", default="", help="comma-separated: F1,F2,F3,F4,F5,F6,F7,F9,naming")
-    q.add_argument("--caveat", action="append", default=[], help="'F3: note' (repeatable)")
+    q.add_argument("--checked", default="", help="comma-separated axes of the store's rubric (ltb-rubric/1: "
+                   "object,convention,edge-cases,junk,vacuous,choice,generality,naming)")
+    q.add_argument("--caveat", action="append", default=[], help="'AXIS: note' (repeatable)")
     q.add_argument("--rationale", default="")
-    q.add_argument("--category", default="other", help="for a problem: F1 … F9, naming, other")
+    q.add_argument("--category", default="other", help="for a problem: an axis of the store's rubric, or other")
     q.add_argument("--question", default="")
     q.add_argument("--involvement", default="outsider", choices=["outsider", "contributor", "author"])
     q.add_argument("--agent", default="", help="'TOOL, MODEL[, session S]': an AI agent wrote it")
@@ -382,7 +409,8 @@ def main(argv: list[str] | None = None) -> int:
     q.add_argument("--property", required=True, help="what it should satisfy")
     q.add_argument("--statement", default="", help="the property as a Lean statement")
     q.add_argument("--catches", default="", help="what a wrong definition would get wrong here")
-    q.add_argument("--modes", default="", help="comma-separated failure modes: F1,F3,…")
+    q.add_argument("--modes", default="", help="comma-separated axes of the store's rubric it would catch "
+                   "a problem on")
     q.add_argument("--involvement", default="outsider", choices=["outsider", "contributor", "author"])
     q.set_defaults(fn=cmd_challenge)
 
