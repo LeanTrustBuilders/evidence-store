@@ -92,7 +92,7 @@ class RubricTests(unittest.TestCase):
 
     def test_forms_and_intake(self):
         with tempfile.TemporaryDirectory() as d:
-            store = sto.Store.init(Path(d) / "evidence", {**sto.default_config(REPO, "Fixture"), "rubric": self.MINE})
+            store = sto.Store.init(Path(d) / "evidence", {**sto.default_config(REPO, "Fixture", "Fixture store"), "rubric": self.MINE})
             ctx = Context(repo=REPO, store=store, dataset=lambda commit: B)
             t = forms.template("problem", store.rubric)
             self.assertIn('options:\n        - "imprecise"\n        - "something else"\n', t)
@@ -110,7 +110,7 @@ class RubricTests(unittest.TestCase):
 class IntakeTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.store = sto.Store.init(Path(self.tmp.name) / "evidence", sto.default_config(REPO, "Fixture"))
+        self.store = sto.Store.init(Path(self.tmp.name) / "evidence", sto.default_config(REPO, "Fixture", "Fixture store"))
         self.ctx = Context(repo=REPO, store=self.store, dataset=lambda commit: B,
                            maintainers=frozenset({"maint"}))
 
@@ -367,12 +367,13 @@ class CliTests(unittest.TestCase):
     def test_init_and_submit(self):
         with tempfile.TemporaryDirectory() as d:
             buf = io.StringIO()
-            with redirect_stdout(buf):
-                self.assertEqual(cli(["init", "--repo", REPO, "--root", "Fixture", "--dir", d,
+            with redirect_stdout(buf), mock.patch("sys.stderr", io.StringIO()):
+                self.assertEqual(cli(["init", "--repo", REPO, "--root", "Fixture", "--dir", d]), 2)  # no name
+                self.assertEqual(cli(["init", "--repo", REPO, "--root", "Fixture", "--name", "Fixture store", "--dir", d,
                                       "--pages-workflow", "pages.yml", "--claim", F + "triple_pos"]), 0)
             root = Path(d)
-            self.assertEqual(json.loads((root / "evidence" / "store.json").read_text())["claims"],
-                             [F + "triple_pos"])
+            config = json.loads((root / "evidence" / "store.json").read_text())
+            self.assertEqual((config["name"], config["claims"]), ("Fixture store", [F + "triple_pos"]))
             self.assertTrue((root / ".github" / "ISSUE_TEMPLATE" / "evidence-review.yml").exists())
             wf = (root / ".github" / "workflows" / "evidence-intake.yml").read_text()
             self.assertIn("!github.event.issue.pull_request", wf)
@@ -410,7 +411,7 @@ class AddCommandTests(unittest.TestCase):
              "origin": {"kind": "site", "ref": "https://example.org/site/"}}
         with tempfile.TemporaryDirectory() as tmp:
             store = Path(tmp) / "evidence"
-            sto.Store.init(store, sto.default_config("o/lib", "Lib"))
+            sto.Store.init(store, sto.default_config("o/lib", "Lib", "Fixture store"))
             f = Path(tmp) / "audit.jsonl"
             f.write_text(json.dumps(r) + "\n")
             buf = io.StringIO()
@@ -445,7 +446,7 @@ class DatasetCommandTests(unittest.TestCase):
         github.gh = gh
         self.tmp = tempfile.TemporaryDirectory()
         self.store = Path(self.tmp.name) / "evidence"
-        sto.Store.init(self.store, sto.default_config("o/lib", "Lib", "o/data"))
+        sto.Store.init(self.store, sto.default_config("o/lib", "Lib", "Fixture store", "o/data"))
 
     def tearDown(self):
         self.github.gh, self.github.gh_json = self.saved

@@ -31,7 +31,7 @@ class FetchImports(unittest.TestCase):
             tmp = Path(tmp)
             other = tmp / "hosts" / "other" / "lib"
             (other / "evidence").mkdir(parents=True)
-            (other / "evidence" / "store.json").write_text(json.dumps(sto.default_config("other/lib", "Other")))
+            (other / "evidence" / "store.json").write_text(json.dumps(sto.default_config("other/lib", "Other", "Fixture store")))
             (other / "evidence" / "r.jsonl").write_text('{"id": "a", "kind": "comment"}\n')
             git(other, "init", "-q")
             git(other, "add", "-A")
@@ -44,7 +44,7 @@ class FetchImports(unittest.TestCase):
 
             mine = tmp / "mine" / "evidence"
             mine.mkdir(parents=True)
-            config = sto.default_config("me/lib", "Mine")
+            config = sto.default_config("me/lib", "Mine", "Fixture store")
             with mock.patch.dict(os.environ, {"EVIDENCE_STORE_GIT_BASE": f"file://{tmp}/hosts/"}):
                 for imports, commit, n in (([{"repo": "other/lib"}], last, 2),
                                            ([{"repo": "other/lib", "ref": "v1"}], first, 1)):

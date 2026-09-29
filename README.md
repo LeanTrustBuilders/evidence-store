@@ -6,14 +6,14 @@ records in git, written from GitHub issues and comments by the people and AI age
 
 ```bash
 pip install git+https://github.com/LeanTrustBuilders/evidence-store
-evidence-store init --repo OWNER/NAME --root MyLib --labels     # in the repository's checkout
+evidence-store init --repo OWNER/NAME --root MyLib --name "My library" --labels     # in the repository's checkout
 ```
 
 ## What a repository gets
 
 | path | what it is |
 |---|---|
-| `evidence/store.json` | the store: the library it is about, where its datasets are, its claims and maintainers, and its rubric if not the standard one |
+| `evidence/store.json` | the store: its name (`--name`), the library it is about, where its datasets are, its claims and maintainers, and its rubric if not the standard one |
 | `evidence/records/*.jsonl` | the records, one file per month, append-only |
 | `.github/ISSUE_TEMPLATE/evidence-*.yml` | issue forms: review a declaration, report a problem, ask a question, propose a test (a **challenge**), list a test, name a result, and change a record's state |
 | `.github/workflows/evidence-intake.yml` | intake: turns those issues and their comments into records |
@@ -95,7 +95,7 @@ store, each checked and given its id, for such a pull request.
 ## Command line
 
 ```
-evidence-store init    --repo OWNER/NAME --root ROOT [--pages-workflow FILE] [--claim NAME] [--labels]
+evidence-store init    --repo OWNER/NAME --root ROOT --name NAME [--pages-workflow FILE] [--claim NAME] [--labels]
 evidence-store intake  --repo OWNER/NAME --outcome FILE [--event PATH --event-name NAME] [--sweep-days N]
 evidence-store apply   --repo OWNER/NAME --outcome FILE
 evidence-store check   [--base REV] [--author LOGIN]

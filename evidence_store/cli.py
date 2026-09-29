@@ -1,6 +1,6 @@
 """evidence-store: an S3 evidence store in a GitHub repository.
 
-  evidence-store init    --repo OWNER/NAME --root ROOT [--pages-workflow FILE] [--claim NAME]
+  evidence-store init    --repo OWNER/NAME --root ROOT --name NAME [--pages-workflow FILE] [--claim NAME]
   evidence-store intake  --repo OWNER/NAME --outcome FILE [--event PATH --event-name NAME] [--sweep-days N]
   evidence-store apply   --repo OWNER/NAME --outcome FILE
   evidence-store check   [--base REV] [--author LOGIN]
@@ -108,8 +108,11 @@ def cmd_init(args) -> int:
     if (store_dir / sto.CONFIG).exists():
         store = sto.Store.load(store_dir)
         print(f"{store_dir}: already a store ({len(store.records)} records); updating forms and workflows")
+    elif not args.name:
+        print("init: a new store needs a name (--name)", file=sys.stderr)
+        return 2
     else:
-        config = sto.default_config(args.repo, args.root, args.datasets_repo or None)
+        config = sto.default_config(args.repo, args.root, args.name, args.datasets_repo or None)
         config["claims"] = args.claim
         store = sto.Store.init(store_dir, config)
         print(f"{store_dir}: new store for {args.repo}")
@@ -371,6 +374,7 @@ def main(argv: list[str] | None = None) -> int:
     q = sub.add_parser("init", help="set a repository up with an evidence store")
     q.add_argument("--repo", required=True, help="the repository, owner/name")
     q.add_argument("--root", required=True, help="the library's root module")
+    q.add_argument("--name", help="the store's name, which views show (needed for a new store)")
     q.add_argument("--dir", default=".", help="the repository's checkout")
     q.add_argument("--store", default="evidence")
     q.add_argument("--datasets-repo", help="where the dataset releases are (default: --repo)")
