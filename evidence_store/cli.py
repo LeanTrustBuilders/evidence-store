@@ -71,6 +71,7 @@ jobs:
         with:
           store: {store}
           pages-workflow: '{pages}'
+          ref: {ref}
 """
 
 CHECK_WORKFLOW = """\
@@ -99,6 +100,7 @@ jobs:
       - uses: LeanTrustBuilders/evidence-store/check@{ref}
         with:
           store: {store}
+          ref: {ref}
 """
 
 
@@ -119,9 +121,9 @@ def cmd_init(args) -> int:
     write_forms(root, store.rubric)
     wf = root / ".github" / "workflows"
     wf.mkdir(parents=True, exist_ok=True)
-    (wf / "evidence-intake.yml").write_text(INTAKE_WORKFLOW.format(ref=ACTIONS_REF, store=args.store,
+    (wf / "evidence-intake.yml").write_text(INTAKE_WORKFLOW.format(ref=args.ref, store=args.store,
                                                                    pages=args.pages_workflow))
-    (wf / "evidence-check.yml").write_text(CHECK_WORKFLOW.format(ref=ACTIONS_REF, store=args.store))
+    (wf / "evidence-check.yml").write_text(CHECK_WORKFLOW.format(ref=args.ref, store=args.store))
     print("wrote .github/ISSUE_TEMPLATE/evidence-*.yml and .github/workflows/evidence-{intake,check}.yml")
     if args.labels:
         from .github import ensure_labels
@@ -381,6 +383,8 @@ def main(argv: list[str] | None = None) -> int:
     q.add_argument("--pages-workflow", default="", help="a workflow to run when records are added")
     q.add_argument("--claim", action="append", default=[], help="a claim the store is about")
     q.add_argument("--labels", action="store_true", help="also create the labels (needs gh)")
+    q.add_argument("--ref", default=ACTIONS_REF,
+                   help="the revision of evidence-store the workflows run: a tag (v0.7.2), or main")
     q.set_defaults(fn=cmd_init)
 
     q = sub.add_parser("intake", help="records from issues and comments")

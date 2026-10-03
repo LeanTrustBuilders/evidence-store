@@ -9,8 +9,8 @@ pip install git+https://github.com/LeanTrustBuilders/evidence-store
 evidence-store init --repo OWNER/NAME --root MyLib --name "My library" --labels     # in the repository's checkout
 ```
 
-Releases are tagged `v<version>` (`…/evidence-store@v0.7.1`), and pin the evidence-core release they
-were tested with.
+Releases are tagged `v<version>` (`…/evidence-store@v0.7.2`), and pin the evidence-core release they
+were tested with. `init --ref v0.7.2` has the store's workflows run that release rather than `main`.
 
 ## What a repository gets
 
@@ -98,7 +98,7 @@ store, each checked and given its id, for such a pull request.
 ## Command line
 
 ```
-evidence-store init    --repo OWNER/NAME --root ROOT --name NAME [--pages-workflow FILE] [--claim NAME] [--labels]
+evidence-store init    --repo OWNER/NAME --root ROOT --name NAME [--pages-workflow FILE] [--claim NAME] [--labels] [--ref REV]
 evidence-store intake  --repo OWNER/NAME --outcome FILE [--event PATH --event-name NAME] [--sweep-days N]
 evidence-store apply   --repo OWNER/NAME --outcome FILE
 evidence-store check   [--base REV] [--author LOGIN]
