@@ -1,0 +1,289 @@
+"""The store's issue forms: one definition, from which come the templates GitHub shows, the parser
+for the issues they produce, and the body an agent writes to submit the same thing.
+
+One form per verdict of a review (S3): **review** (an acceptance, with what was checked, the
+reference and caveats), **problem** (with what is wrong, and a suggested fix) and **question**.
+Then **challenge**, a proposed test: a property the declaration should have, which someone can then
+prove in the library; **test**, a declaration of the library that tests another; and **named**, a
+named result or notable definition. Last, **status**, which changes the state of a record: withdraw
+it, mark a problem fixed, intended or not a problem, a question answered, a challenge met, failed or
+declined, reopen. Each labels its issue (`evidence:review`, …), which is how intake knows what an
+issue is.
+
+What a review checked, what a problem says is wrong and what a challenge would catch are axes of the
+store's rubric (S3, "Rubrics"; ``ltb-rubric/1`` unless its ``store.json`` gives another): the forms
+are made for a rubric, ``FORMS`` for the standard one.
+
+GitHub writes a form's answers into the issue body as ``### <label>`` sections, in form order, with
+``_No response_`` for an empty field and ``- [X] …`` / ``- [ ] …`` for checkboxes. ``parse`` reads
+that, and ``body`` writes it, so an issue opened from the command line reads the same as one opened
+from the web.
+"""
+from __future__ import annotations
+
+import json
+import re
+
+from evidence_core.rubric import OTHER, STANDARD, Rubric
+
+NO_RESPONSE = "_No response_"
+
+def checks(rubric: Rubric) -> list[tuple[str, str]]:
+    """The axes a review can say it checked: (name, what a review that checked it says)."""
+    return [(a.name, a.check) for a in rubric.axes]
+
+
+def categories(rubric: Rubric) -> list[tuple[str, str]]:
+    """What a problem can say is wrong: (name, the problem named), and ``other``."""
+    return [(a.name, a.problem) for a in rubric.axes] + [(OTHER, "something else")]
+
+
+INVOLVEMENT = [("outsider", "an outsider to this library"), ("contributor", "a contributor to this library"),
+               ("author", "the author of this declaration")]
+
+WHO = [("person", "me, a person"), ("agent", "an AI agent, run by me")]
+
+DECL = {"id": "decl", "type": "input", "label": "Declaration", "required": True,
+        "description": "Its full Lean name, e.g. `MyLib.Foo.bar`."}
+COMMIT = {"id": "commit", "type": "input", "label": "Commit",
+          "description": "The library's commit you read it at. Empty: the latest."}
+WHO_FIELD = {"id": "who", "type": "dropdown", "label": "Written by", "options": WHO,
+             "description": "A review by an AI agent is shown as one, and counted apart."}
+AGENT = {"id": "agent", "type": "input", "label": "Agent",
+         "description": "If an AI agent wrote this: its tool and model, e.g. `Claude Code, claude-opus-5-5`."}
+INVOLVED = {"id": "involvement", "type": "dropdown", "label": "You are", "options": INVOLVEMENT}
+
+def forms(rubric: Rubric = STANDARD) -> dict:
+    """The forms, for a store whose rubric is ``rubric``. Only their axes depend on it."""
+    example = "edge-cases" if "edge-cases" in rubric.names else rubric.names[0]
+    return {
+        "review": {
+            "file": "evidence-review.yml", "label": "evidence:review", "title": "Review: ",
+            "name": "Review a declaration",
+            "description": "Say that a declaration means what it should, and what you checked.",
+            "intro": "A review is a judgement about **meaning**: does this declaration say what it is "
+                     "supposed to say? It is recorded in the repository's evidence store under your "
+                     "GitHub account, and goes stale by itself if the declaration, or anything it rests "
+                     "on, changes.",
+            "fields": [
+                DECL, COMMIT,
+                {"id": "reference", "type": "input", "label": "Compared with",
+                 "description": "What you compared it with: a book or paper and section, a URL, or "
+                                "\"my own knowledge\"."},
+                {"id": "checked", "type": "checkboxes", "label": "What you checked", "options": checks(rubric),
+                 "description": "Tick what you checked. What is left unticked is shown as not checked."},
+                {"id": "caveats", "type": "textarea", "label": "Caveats",
+                 "description": f"One per line, starting with what it is about: `{example}: false at n = 0`."},
+                {"id": "rationale", "type": "textarea", "label": "Why",
+                 "description": "Optional for people, required for AI agents."},
+                INVOLVED, WHO_FIELD, AGENT,
+            ],
+        },
+        "problem": {
+            "file": "evidence-problem.yml", "label": "evidence:problem", "title": "Problem: ",
+            "name": "Report a problem with a declaration",
+            "description": "It does not mean what it should.",
+            "intro": "A problem stays open until its reporter or a maintainer comments `/fixed <commit>`, "
+                     "`/intended` or `/invalid`. Comments on this issue are recorded as replies.",
+            "fields": [
+                DECL, COMMIT,
+                {"id": "category", "type": "dropdown", "label": "What is wrong", "options": categories(rubric),
+                 "required": True},
+                {"id": "rationale", "type": "textarea", "label": "Why", "required": True,
+                 "description": "The counterexample, the case, or the step that fails."},
+                {"id": "fix", "type": "textarea", "label": "Suggested fix",
+                 "description": "Optional: what it should be, in Lean or in words."},
+                INVOLVED, WHO_FIELD, AGENT,
+            ],
+        },
+        "question": {
+            "file": "evidence-question.yml", "label": "evidence:question", "title": "Question: ",
+            "name": "Ask a question about a declaration",
+            "description": "What is it at 0? Why this convention?",
+            "intro": "Answers are comments on this issue. The asker or a maintainer closes it with "
+                     "`/answered`.",
+            "fields": [
+                DECL, COMMIT,
+                {"id": "question", "type": "textarea", "label": "Question", "required": True},
+                INVOLVED, WHO_FIELD, AGENT,
+            ],
+        },
+        "challenge": {
+            "file": "evidence-challenge.yml", "label": "evidence:challenge", "title": "Challenge: ",
+            "name": "Propose a test of a declaration",
+            "description": "A property it should have, for someone to prove in the library.",
+            "intro": "A challenge is a **proposed test**: something the declaration should satisfy if it means "
+                     "what it should (a value, an edge case, agreement with another notion). It stays open "
+                     "until someone proves it in the library and comments `/met <the declaration that proves "
+                     "it>`; `/failed` says the declaration does not have the property (then report the "
+                     "problem), and a maintainer can comment `/declined`.",
+            "fields": [
+                DECL, COMMIT,
+                {"id": "property", "type": "textarea", "label": "What it should satisfy", "required": True,
+                 "description": "In words, or in Lean: `vonMangoldt 1 = 0`, \"agrees with Mathlib's … on …\"."},
+                {"id": "statement", "type": "textarea", "label": "As a Lean statement",
+                 "description": "Optional: the statement to prove, as you would write it after `theorem`."},
+                {"id": "catches", "type": "textarea", "label": "What it would catch",
+                 "description": "Optional: what a wrong definition would get wrong here."},
+                {"id": "modes", "type": "checkboxes", "label": "Kinds of problem it would catch",
+                 "options": [(a.name, a.problem) for a in rubric.axes],
+                 "description": "Optional: which of the ways a declaration goes wrong it would catch."},
+                INVOLVED, WHO_FIELD, AGENT,
+            ],
+        },
+        "test": {
+            "file": "evidence-test.yml", "label": "evidence:test", "title": "Test: ",
+            "name": "List a test of a declaration",
+            "description": "A declaration of the library that tests it: a value, a degenerate case, an agreement.",
+            "intro": "A test is a declaration of the library that pins another down. It is not a judgement: "
+                     "Lean checks it at every commit, and the page shows it as passing while it is there "
+                     "without `sorry`.",
+            "fields": [
+                DECL, COMMIT,
+                {"id": "test", "type": "input", "label": "Tested by", "required": True,
+                 "description": "The full name of the declaration that tests it, e.g. `MyLib.Foo.bar_zero`."},
+                {"id": "checks", "type": "textarea", "label": "What it checks",
+                 "description": "Optional for people, required for AI agents."},
+                INVOLVED, WHO_FIELD, AGENT,
+            ],
+        },
+        "named": {
+            "file": "evidence-named.yml", "label": "evidence:named", "title": "Named: ",
+            "name": "Name a result or notable definition",
+            "description": "Point readers at what matters: a named theorem, a notable definition.",
+            "intro": "Most of a library is API and steps of proofs. A name marks a declaration out as one "
+                     "to read first.",
+            "fields": [
+                DECL, COMMIT,
+                {"id": "name", "type": "input", "label": "Name", "required": True,
+                 "description": "What mathematicians call it: \"Dirichlet's unit theorem\"."},
+                {"id": "what", "type": "dropdown", "label": "It is",
+                 "options": [("result", "a named result"), ("definition", "a notable definition")]},
+                {"id": "about", "type": "textarea", "label": "In one sentence"},
+                {"id": "source", "type": "input", "label": "Named where",
+                 "description": "Optional: a paper, a roadmap, a URL."},
+                WHO_FIELD, AGENT,
+            ],
+        },
+        "status": {
+            "file": "evidence-status.yml", "label": "evidence:status", "title": "Status: ",
+            "name": "Change the state of a review, problem, question or challenge",
+            "description": "Withdraw what you wrote; mark a problem fixed, intended or not a problem; a question answered; a challenge met, failed or declined; reopen.",
+            "intro": "Usually opened from the buttons of a page, with the record's id filled in. It is recorded if "
+                     "your account may make the change: the author of a record can withdraw it; the reporter of a "
+                     "problem, the asker of a question, the author of a challenge and the maintainers can resolve or "
+                     "reopen it. The same changes can be made by commenting on the record's own issue (`/withdraw`, "
+                     "`/fixed <commit>`, `/met <declaration>`, …).",
+            "fields": [
+                {"id": "record", "type": "input", "label": "Record", "required": True,
+                 "description": "The id of the record: 16 hexadecimal digits."},
+                {"id": "action", "type": "input", "label": "Change", "required": True,
+                 "description": "One of: withdraw, fixed, intended, invalid, answered, met, failed, declined, reopen."},
+                {"id": "commit", "type": "input", "label": "Fixed in",
+                 "description": "For `fixed`: the commit that fixed it."},
+                {"id": "test", "type": "input", "label": "Met by",
+                 "description": "For `met`: the full name of the declaration that proves the challenge."},
+                {"id": "note", "type": "textarea", "label": "Note"},
+                WHO_FIELD, AGENT,
+            ],
+        },
+    }
+
+
+FORMS = forms()
+LABELS = {f["label"]: kind for kind, f in FORMS.items()}
+
+
+def kind_of(labels: list) -> str | None:
+    """The form an issue was opened with, from its labels (names or label objects)."""
+    for label in labels:
+        name = label.get("name") if isinstance(label, dict) else label
+        if name in LABELS:
+            return LABELS[name]
+    return None
+
+
+# --- templates -------------------------------------------------------------------------------------
+
+def _q(s: str) -> str:
+    """A YAML double-quoted scalar: JSON's escaping is valid YAML."""
+    return json.dumps(s, ensure_ascii=False)
+
+
+def template(kind: str, rubric: Rubric = STANDARD) -> str:
+    """The issue form template (YAML) for ``kind``."""
+    f = forms(rubric)[kind]
+    out = [f"# Generated by evidence-store (`evidence-store init`); edit the definitions in",
+           f"# evidence_store/forms.py rather than this file.",
+           f"name: {_q(f['name'])}", f"description: {_q(f['description'])}",
+           f"title: {_q(f['title'])}", f"labels: [{_q(f['label'])}]", "body:",
+           "  - type: markdown", "    attributes:", f"      value: {_q(f['intro'])}"]
+    for field in f["fields"]:
+        out += [f"  - type: {field['type']}", f"    id: {field['id']}", "    attributes:",
+                f"      label: {_q(field['label'])}"]
+        if field.get("description"):
+            out.append(f"      description: {_q(field['description'])}")
+        if field["type"] == "dropdown":
+            out.append("      options:")
+            out += [f"        - {_q(text)}" for _, text in field["options"]]
+        if field["type"] == "checkboxes":
+            out.append("      options:")
+            out += [f"        - label: {_q(f'{code}: {text}')}" for code, text in field["options"]]
+        if field.get("required"):
+            out += ["    validations:", "      required: true"]
+    return "\n".join(out) + "\n"
+
+
+# --- parsing and writing bodies --------------------------------------------------------------------
+
+def parse(kind: str, body: str, rubric: Rubric = STANDARD) -> dict:
+    """The answers of an issue body written from form ``kind``: field id → text (inputs,
+    textareas), option code (dropdowns) or {code: checked} (checkboxes). Empty fields are left out."""
+    fields = {f["label"]: f for f in forms(rubric)[kind]["fields"]}
+    sections: dict[str, list[str]] = {}
+    current = None
+    for line in (body or "").replace("\r\n", "\n").split("\n"):
+        m = re.match(r"^###\s+(.*?)\s*$", line)
+        if m and m.group(1) in fields:
+            current = m.group(1)
+            sections[current] = []
+        elif current is not None:
+            sections[current].append(line)
+    out: dict = {}
+    for label, lines in sections.items():
+        field = fields[label]
+        text = "\n".join(lines).strip()
+        if field["type"] == "checkboxes":
+            ticked = {}
+            for line in lines:
+                cm = re.match(r"^\s*-\s*\[([ xX])\]\s*(.*)$", line)
+                if cm:
+                    code = cm.group(2).split(":", 1)[0].strip()
+                    ticked[code] = cm.group(1).lower() == "x"
+            out[field["id"]] = ticked
+            continue
+        if not text or text == NO_RESPONSE:
+            continue
+        if field["type"] == "dropdown":
+            code = next((c for c, t in field["options"] if t == text or c == text), None)
+            out[field["id"]] = code if code is not None else text
+        else:
+            out[field["id"]] = text
+    return out
+
+
+def body(kind: str, answers: dict, rubric: Rubric = STANDARD) -> str:
+    """The issue body GitHub would write for ``answers`` (as ``parse`` returns them)."""
+    parts = []
+    for field in forms(rubric)[kind]["fields"]:
+        value = answers.get(field["id"])
+        if field["type"] == "checkboxes":
+            value = value or {}
+            text = "\n".join(f"- [{'X' if value.get(code) else ' '}] {code}: {label}"
+                             for code, label in field["options"])
+        elif field["type"] == "dropdown":
+            text = dict(field["options"]).get(value, value) if value else NO_RESPONSE
+        else:
+            text = value if value else NO_RESPONSE
+        parts.append(f"### {field['label']}\n\n{text}")
+    return "\n\n".join(parts) + "\n"

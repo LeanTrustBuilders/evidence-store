@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "evidence-store"
-version = "0.7.0"
+version = "0.7.1"
 description = "An S3 evidence store in a GitHub repository: issue forms, intake, checks"
 requires-python = ">=3.11"
 license = {text = "Apache-2.0"}
-dependencies = ["evidence-core @ git+https://github.com/LeanTrustBuilders/evidence-core"]
+dependencies = ["evidence-core @ git+https://github.com/LeanTrustBuilders/evidence-core@v0.16.1"]
 
 [project.scripts]
 evidence-store = "evidence_store.cli:main"

@@ -9,6 +9,9 @@ pip install git+https://github.com/LeanTrustBuilders/evidence-store
 evidence-store init --repo OWNER/NAME --root MyLib --name "My library" --labels     # in the repository's checkout
 ```
 
+Releases are tagged `v<version>` (`…/evidence-store@v0.7.1`), and pin the evidence-core release they
+were tested with.
+
 ## What a repository gets
 
 | path | what it is |
